@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 
+type MapLayer = 'scheme' | 'satellite' | 'hybrid';
+
 interface Props {
   trees: TreeMarker[];
   onMapClick: (lat: number, lng: number) => void;
@@ -11,6 +13,39 @@ interface Props {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   selectedTreeId: string | null;
+}
+
+const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
+  scheme:    { label: 'Схема',    icon: '🗺' },
+  satellite: { label: 'Спутник', icon: '🛰' },
+  hybrid:    { label: 'Гибрид',  icon: '🌍' },
+};
+
+function getTileLayer(type: MapLayer): L.TileLayer {
+  switch (type) {
+    case 'satellite':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: '© Esri © USGS', maxZoom: 19 }
+      );
+    case 'hybrid':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: '© Esri © USGS', maxZoom: 19 }
+      );
+    default:
+      return L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        { attribution: '© OpenStreetMap © CARTO', maxZoom: 20 }
+      );
+  }
+}
+
+function getLabelsLayer(): L.TileLayer {
+  return L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+    { attribution: '', maxZoom: 20, pane: 'shadowPane' }
+  );
 }
 
 function createTreeIcon(status: TreeMarker['status']) {
@@ -40,7 +75,10 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const [addMode, setAddMode] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -51,13 +89,11 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       zoomControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap © CARTO',
-      maxZoom: 20,
-    }).addTo(map);
+    const tile = getTileLayer('scheme');
+    tile.addTo(map);
+    tileLayerRef.current = tile;
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
     mapRef.current = map;
 
     return () => {
@@ -65,6 +101,30 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       mapRef.current = null;
     };
   }, []);
+
+  // Switch tile layer when activeLayer changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+    if (labelsLayerRef.current) {
+      map.removeLayer(labelsLayerRef.current);
+      labelsLayerRef.current = null;
+    }
+
+    const newTile = getTileLayer(activeLayer);
+    newTile.addTo(map);
+    tileLayerRef.current = newTile;
+
+    if (activeLayer === 'hybrid') {
+      const labels = getLabelsLayer();
+      labels.addTo(map);
+      labelsLayerRef.current = labels;
+    }
+  }, [activeLayer]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -78,15 +138,9 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     };
 
     map.on('click', handleClick);
-    if (addMode) {
-      map.getContainer().style.cursor = 'crosshair';
-    } else {
-      map.getContainer().style.cursor = '';
-    }
+    map.getContainer().style.cursor = addMode ? 'crosshair' : '';
 
-    return () => {
-      map.off('click', handleClick);
-    };
+    return () => { map.off('click', handleClick); };
   }, [addMode, onMapClick]);
 
   useEffect(() => {
@@ -110,18 +164,11 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         existing.setIcon(createTreeIcon(tree.status));
       } else {
         const marker = L.marker([tree.lat, tree.lng], { icon: createTreeIcon(tree.status) });
-
         const popupDiv = document.createElement('div');
         const root = createRoot(popupDiv);
         root.render(
-          <TreePopup
-            tree={tree}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onSelect={onSelect}
-          />
+          <TreePopup tree={tree} onEdit={onEdit} onDelete={onDelete} onSelect={onSelect} />
         );
-
         marker.bindPopup(L.popup({ maxWidth: 280, minWidth: 240 }).setContent(popupDiv));
         marker.addTo(map);
         markersRef.current.set(tree.id, marker);
@@ -143,7 +190,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full rounded-xl overflow-hidden" />
 
-      {/* Add mode toggle */}
+      {/* Add mode button */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
         <button
           onClick={() => setAddMode(m => !m)}
@@ -158,7 +205,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           <span>{addMode ? '📍' : '➕'}</span>
           {addMode ? 'Кликните на карту' : 'Добавить дерево'}
         </button>
-
         {addMode && (
           <button
             onClick={() => setAddMode(false)}
@@ -167,6 +213,26 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
             Отмена
           </button>
         )}
+      </div>
+
+      {/* Layer switcher */}
+      <div className="absolute top-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex">
+        {(Object.entries(LAYERS) as [MapLayer, { label: string; icon: string }][]).map(([key, val]) => (
+          <button
+            key={key}
+            onClick={() => setActiveLayer(key)}
+            className={`
+              flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all
+              ${activeLayer === key
+                ? 'bg-[var(--forest-mid)] text-white'
+                : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
+              }
+            `}
+          >
+            <span>{val.icon}</span>
+            <span>{val.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Legend */}
