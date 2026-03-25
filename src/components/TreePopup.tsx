@@ -48,7 +48,16 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
         )}
         <div className="text-[#6b7c6e]">Категория</div>
         <div className="font-medium text-[#1a3a2a]">{CONDITION_LABELS[tree.condition]}</div>
+        <div className="text-[#6b7c6e]">Координаты</div>
+        <div className="font-mono text-[10px] text-[#1a3a2a]">{tree.lat.toFixed(5)}, {tree.lng.toFixed(5)}</div>
       </div>
+
+      {tree.address && (
+        <div className="flex items-start gap-1.5 text-xs mb-2 border-t border-gray-100 pt-2">
+          <span className="text-[#6b7c6e] shrink-0">📍</span>
+          <span className="text-[#1a3a2a] font-medium">{tree.address}</span>
+        </div>
+      )}
 
       {tree.description && (
         <div className="text-xs text-[#6b7c6e] italic mb-2 border-t border-gray-100 pt-2">

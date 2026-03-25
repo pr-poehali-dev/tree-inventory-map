@@ -34,6 +34,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [age, setAge] = useState(String(initialData?.age ?? ''));
   const [status, setStatus] = useState<TreeStatus>(initialData?.status ?? 'good');
   const [condition, setCondition] = useState<TreeCondition>(initialData?.condition ?? 'healthy');
+  const [address, setAddress] = useState(initialData?.address ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl ?? '');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -59,6 +60,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
       age: age ? Number(age) : undefined,
       status,
       condition,
+      address: address.trim(),
       description: description.trim(),
       photoUrl,
     });
@@ -86,6 +88,38 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
               placeholder="Берёза №1"
               className="border-[var(--forest-light)]/40 focus:border-[var(--forest-mid)]"
             />
+          </div>
+
+          {/* Address */}
+          <div className="grid gap-1.5">
+            <Label htmlFor="address">Адрес расположения</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="ул. Ленина, 12 / Парк Победы"
+              className="border-[var(--forest-light)]/40 focus:border-[var(--forest-mid)]"
+            />
+          </div>
+
+          {/* Coordinates (read-only) */}
+          <div className="grid gap-1.5">
+            <Label>Координаты</Label>
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-[var(--forest-pale)]/50 border border-[var(--forest-light)]/30 rounded-md">
+                <Icon name="Navigation" size={13} className="text-[var(--stone)] shrink-0" />
+                <span className="text-xs text-[var(--stone)] font-mono">
+                  {(lat ?? initialData?.lat ?? 0).toFixed(6)}
+                </span>
+              </div>
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-[var(--forest-pale)]/50 border border-[var(--forest-light)]/30 rounded-md">
+                <Icon name="Navigation" size={13} className="text-[var(--stone)] shrink-0" />
+                <span className="text-xs text-[var(--stone)] font-mono">
+                  {(lng ?? initialData?.lng ?? 0).toFixed(6)}
+                </span>
+              </div>
+            </div>
+            <p className="text-[10px] text-[var(--stone)]">Координаты задаются кликом на карте</p>
           </div>
 
           {/* Species */}

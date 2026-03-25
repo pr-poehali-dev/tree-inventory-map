@@ -13,6 +13,7 @@ export interface TreeMarker {
   age?: number;
   status: TreeStatus;
   condition: TreeCondition;
+  address?: string;
   description?: string;
   photoUrl?: string;
   createdAt: string;

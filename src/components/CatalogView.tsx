@@ -144,11 +144,21 @@ export default function CatalogView({
                   </Badge>
                 </div>
 
-                <div className="flex gap-3 mt-1.5 text-xs text-[var(--stone)]">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-[var(--stone)]">
                   <span>⌀ {tree.diameter} см</span>
                   <span>↑ {tree.height} м</span>
                   <span>× {tree.count} шт</span>
                   {tree.age && <span>~ {tree.age} лет</span>}
+                </div>
+                {tree.address && (
+                  <div className="flex items-center gap-1 mt-1.5 text-xs text-[var(--forest-mid)]">
+                    <Icon name="MapPin" size={11} className="shrink-0" />
+                    <span className="truncate">{tree.address}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[var(--stone)]/70 font-mono">
+                  <Icon name="Navigation" size={10} className="shrink-0" />
+                  <span>{tree.lat.toFixed(5)}, {tree.lng.toFixed(5)}</span>
                 </div>
               </div>
             </div>
