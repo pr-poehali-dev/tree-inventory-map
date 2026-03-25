@@ -46,8 +46,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: [55.7522, 37.6156],
-      zoom: 16,
+      center: [53.7102, 91.6886],
+      zoom: 12,
       zoomControl: false,
     });
 

@@ -117,7 +117,7 @@ export default function Index() {
             <button
               onClick={() => {
                 setEditingTree(null);
-                setPendingLatLng({ lat: 55.7522, lng: 37.6156 });
+                setPendingLatLng({ lat: 53.7102, lng: 91.6886 });
                 setFormOpen(true);
               }}
               className="w-full flex items-center gap-2 px-3 py-2.5 bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] text-white rounded-lg text-sm font-medium transition-colors"
