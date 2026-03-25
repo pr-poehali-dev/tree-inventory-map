@@ -3,7 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
-import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_LIST, TreeStatus } from '@/types/tree';
+import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_GROUPS, TreeStatus } from '@/types/tree';
+import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 
 interface Props {
   trees: TreeMarker[];
@@ -55,9 +56,21 @@ export default function CatalogView({
             <SelectTrigger className="border-[var(--forest-light)]/40 text-sm h-9">
               <SelectValue placeholder="Порода" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-72">
               <SelectItem value="__all__">Все породы</SelectItem>
-              {SPECIES_LIST.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {SPECIES_GROUPS.map((group, gi) => (
+                <>
+                  {gi >= 0 && <SelectSeparator key={`sep-${gi}`} />}
+                  <SelectGroup key={group.group}>
+                    <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1">
+                      <span>{group.icon}</span>{group.group}
+                    </SelectLabel>
+                    {group.items.map(s => (
+                      <SelectItem key={s} value={s} className="pl-6 text-xs">{s}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              ))}
             </SelectContent>
           </Select>
 

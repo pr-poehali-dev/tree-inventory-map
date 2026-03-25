@@ -10,10 +10,11 @@ import {
   TreeMarker,
   TreeStatus,
   TreeCondition,
-  SPECIES_LIST,
+  SPECIES_GROUPS,
   STATUS_LABELS,
   CONDITION_LABELS,
 } from '@/types/tree';
+import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 
 interface Props {
   open: boolean;
@@ -26,7 +27,7 @@ interface Props {
 
 export default function TreeFormDialog({ open, onClose, onSave, initialData, lat, lng }: Props) {
   const [name, setName] = useState(initialData?.name ?? '');
-  const [species, setSpecies] = useState(initialData?.species ?? SPECIES_LIST[0]);
+  const [species, setSpecies] = useState(initialData?.species ?? SPECIES_GROUPS[0].items[0]);
   const [diameter, setDiameter] = useState(String(initialData?.diameter ?? 20));
   const [height, setHeight] = useState(String(initialData?.height ?? 8));
   const [count, setCount] = useState(String(initialData?.count ?? 1));
@@ -89,14 +90,25 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
 
           {/* Species */}
           <div className="grid gap-1.5">
-            <Label>Порода дерева</Label>
+            <Label>Порода / вид</Label>
             <Select value={species} onValueChange={setSpecies}>
               <SelectTrigger className="border-[var(--forest-light)]/40">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                {SPECIES_LIST.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+              <SelectContent className="max-h-72">
+                {SPECIES_GROUPS.map((group, gi) => (
+                  <>
+                    {gi > 0 && <SelectSeparator key={`sep-${gi}`} />}
+                    <SelectGroup key={group.group}>
+                      <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1.5">
+                        <span>{group.icon}</span>
+                        {group.group}
+                      </SelectLabel>
+                      {group.items.map(s => (
+                        <SelectItem key={s} value={s} className="pl-6">{s}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </>
                 ))}
               </SelectContent>
             </Select>
