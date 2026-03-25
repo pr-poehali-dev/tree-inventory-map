@@ -72,7 +72,7 @@ export default function Index() {
           <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-lg">🌲</div>
           <div>
             <div className="font-bold font-heading text-sm leading-tight">Дендрологическая ведомость</div>
-            <div className="text-white/60 text-xs">Учёт и инвентаризация деревьев</div>
+            <div className="text-white/60 text-xs">г. Минусинск и Минусинский район</div>
           </div>
         </div>
 

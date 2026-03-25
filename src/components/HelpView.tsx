@@ -66,7 +66,7 @@ export default function HelpView() {
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {/* Header */}
       <div className="forest-bg rounded-xl p-5 text-white">
-        <div className="text-xl font-bold font-heading mb-1">Дендрологическая ведомость</div>
+        <div className="text-xl font-bold font-heading mb-1">Дендрологическая ведомость города Минусинска и Минусинского района</div>
         <div className="text-sm text-white/70">Система учёта и инвентаризации деревьев</div>
         <div className="mt-3 flex gap-4 text-xs text-white/60">
           <span>Версия 1.0</span>

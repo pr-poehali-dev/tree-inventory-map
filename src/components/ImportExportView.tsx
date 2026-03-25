@@ -55,7 +55,7 @@ export default function ImportExportView({ trees, onImport }: Props) {
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Дендрологическая ведомость</name>
+    <name>Дендрологическая ведомость города Минусинска и Минусинского района</name>
     <description>Экспорт от ${new Date().toLocaleDateString('ru-RU')}</description>
     ${placemarks}
   </Document>
