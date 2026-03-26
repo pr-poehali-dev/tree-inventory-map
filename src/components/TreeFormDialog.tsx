@@ -145,7 +145,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
               <SelectTrigger className="border-[var(--forest-light)]/40">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-72">
+              <SelectContent className="max-h-72 z-[9999]" position="popper" sideOffset={4}>
                 {SPECIES_GROUPS.map((group, gi) => (
                   <SelectGroup key={group.group}>
                     {gi > 0 && <SelectSeparator />}
