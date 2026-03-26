@@ -3,25 +3,33 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 откалибровано по двум опорным точкам:
-// Сосна:  X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
-// Тополь: X=375516.198, Y=19202.592 → lat=53.70008, lon=91.67246
-// Используем аффинное преобразование: прямой пересчёт по двум точкам без proj4
-const P1 = { x: 376469.980, y: 20721.343, lat: 53.71025, lon: 91.69611 };
-const P2 = { x: 375516.198, y: 19202.592, lat: 53.70008, lon: 91.67246 };
-
-const dX = P2.x - P1.x; // -953.782
-const dY = P2.y - P1.y; // -1518.751
-const dLat = P2.lat - P1.lat; // -0.01017
-const dLon = P2.lon - P1.lon; // -0.02365
-
-// Масштабные коэффициенты
-const kLat = dLat / dX; // градус широты на метр X
-const kLon = dLon / dY; // градус долготы на метр Y
+// МСК-167 → WGS84: полное аффинное преобразование по 3 опорным точкам
+// P1 Сосна:  X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
+// P2 Тополь: X=375516.198, Y=19202.592 → lat=53.70008, lon=91.67246
+// P3 Берёза: X=373632.904, Y=22365.750 → lat=53.68502, lon=91.72181
+// Аффинное преобразование: lat = a0 + a1*X + a2*Y,  lon = b0 + b1*X + b2*Y
+// Решение системы 3x3 методом Крамера
+const _p = [
+  { x: 376469.980, y: 20721.343, lat: 53.71025, lon: 91.69611 },
+  { x: 375516.198, y: 19202.592, lat: 53.70008, lon: 91.67246 },
+  { x: 373632.904, y: 22365.750, lat: 53.68502, lon: 91.72181 },
+];
+function _solveAffine(pts: typeof _p) {
+  const [p1, p2, p3] = pts;
+  const D = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
+  const solveFor = (z: 'lat' | 'lon') => {
+    const a0 = (p1[z] * (p2.x * p3.y - p3.x * p2.y) + p2[z] * (p3.x * p1.y - p1.x * p3.y) + p3[z] * (p1.x * p2.y - p2.x * p1.y)) / D;
+    const a1 = (p1[z] * (p2.y - p3.y) + p2[z] * (p3.y - p1.y) + p3[z] * (p1.y - p2.y)) / D;
+    const a2 = (p1[z] * (p3.x - p2.x) + p2[z] * (p1.x - p3.x) + p3[z] * (p2.x - p1.x)) / D;
+    return { a0, a1, a2 };
+  };
+  return { lat: solveFor('lat'), lon: solveFor('lon') };
+}
+const _affine = _solveAffine(_p);
 
 function msk167toWGS84(x: number, y: number): [number, number] {
-  const lat = P1.lat + (x - P1.x) * kLat;
-  const lon = P1.lon + (y - P1.y) * kLon;
+  const lat = _affine.lat.a0 + _affine.lat.a1 * x + _affine.lat.a2 * y;
+  const lon = _affine.lon.a0 + _affine.lon.a1 * x + _affine.lon.a2 * y;
   return [lat, lon];
 }
 
