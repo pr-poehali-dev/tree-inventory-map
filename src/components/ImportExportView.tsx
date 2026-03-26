@@ -82,7 +82,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       a.house_number,
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : '';
-  } catch {
+  } catch (_) {
     return '';
   }
 }
