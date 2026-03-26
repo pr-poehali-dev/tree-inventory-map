@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 import MeasureTool from './MeasureTool';
-import { XmlPolygon } from '@/utils/parseXmlPolygons';
+
 
 type MapLayer = 'scheme' | 'satellite' | 'hybrid';
 
@@ -15,7 +15,6 @@ interface Props {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   selectedTreeId: string | null;
-  xmlPolygons?: XmlPolygon[];
 }
 
 const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
@@ -82,13 +81,12 @@ function createTreeIcon(status: TreeMarker['status'], species: string) {
   });
 }
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, xmlPolygons = [] }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
-  const xmlLayersRef = useRef<L.LayerGroup | null>(null);
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
@@ -228,54 +226,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       }
     }
   }, [selectedTreeId]);
-
-  // XML полигоны
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (xmlLayersRef.current) {
-      map.removeLayer(xmlLayersRef.current);
-    }
-
-    if (xmlPolygons.length === 0) {
-      xmlLayersRef.current = null;
-      return;
-    }
-
-    const group = L.layerGroup();
-    const COLORS = ['#e67e22', '#8e44ad', '#2980b9', '#16a085', '#c0392b', '#27ae60'];
-
-    xmlPolygons.forEach((poly, i) => {
-      const color = COLORS[i % COLORS.length];
-      // coords в [lng, lat] → Leaflet хочет [lat, lng]
-      const latlngs: L.LatLngExpression[] = poly.coordinates.map(([lng, lat]) => [lat, lng]);
-
-      const polygon = L.polygon(latlngs, {
-        color,
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.15,
-      });
-
-      const tooltipContent = [
-        `<b>${poly.label}</b>`,
-        ...Object.entries(poly.properties).map(([k, v]) => `${k}: ${v}`),
-      ].join('<br/>');
-
-      polygon.bindTooltip(tooltipContent, { sticky: true, opacity: 0.9 });
-      group.addLayer(polygon);
-    });
-
-    group.addTo(map);
-    xmlLayersRef.current = group;
-
-    // Центрируем карту на полигонах
-    const bounds = L.latLngBounds(
-      xmlPolygons.flatMap(p => p.coordinates.map(([lng, lat]) => [lat, lng] as L.LatLngExpression))
-    );
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
-  }, [xmlPolygons]);
 
   return (
     <div className="relative w-full h-full">
