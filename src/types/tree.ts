@@ -3,6 +3,7 @@ export type TreeCondition = 'healthy' | 'weakened' | 'strongly_weakened' | 'dyin
 export type TreeLifeStatus = 'alive' | 'cut';
 
 export interface TreeMarker {
+  number?: number;
   id: string;
   lat: number;
   lng: number;

@@ -14,6 +14,9 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
     <div className="p-3 min-w-[240px] font-sans">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div>
+          {tree.number && (
+            <div className="text-[10px] font-bold text-[#2d6a4f] mb-0.5">№ {tree.number}</div>
+          )}
           <div className="font-semibold text-[#1a3a2a] text-sm">{tree.name}</div>
           <div className="text-xs text-[#6b7c6e]">{tree.species}</div>
         </div>

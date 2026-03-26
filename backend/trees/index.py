@@ -15,7 +15,7 @@ CORS = {
 }
 
 SCHEMA = "t_p59085732_tree_inventory_map"
-SELECT_COLS = "id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,description,photo_url,created_at,updated_at"
+SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,description,photo_url,created_at,updated_at"
 
 
 def get_conn():
@@ -25,6 +25,7 @@ def get_conn():
 def fmt(row):
     d = dict(row)
     return {
+        "number": d["number"],
         "id": d["id"],
         "lat": float(d["lat"]),
         "lng": float(d["lng"]),
@@ -64,7 +65,7 @@ def handler(event: dict, context) -> dict:
                 if not row:
                     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Not found"})}
                 return {"statusCode": 200, "headers": CORS, "body": json.dumps(fmt(row))}
-            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees ORDER BY created_at DESC")
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees ORDER BY number ASC")
             rows = cur.fetchall()
             return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in rows])}
 

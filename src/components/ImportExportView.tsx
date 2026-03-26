@@ -91,10 +91,10 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
   };
 
   const exportCSV = () => {
-    const headers = ['ID','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Широта','Долгота','Дата'];
-    const rows    = trees.map(t => [
-      t.id, t.name, t.species, t.diameter, t.height, t.count,
-      t.age ?? '', t.status, t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
+    const headers = ['№','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Адрес','Широта','Долгота','Дата'];
+    const rows    = trees.map((t, i) => [
+      t.number ?? (i + 1), t.name, t.species, t.diameter, t.height, t.count,
+      t.age ?? '', t.status, t.address ?? '', t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
     ]);
     const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });

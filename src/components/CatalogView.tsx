@@ -139,7 +139,10 @@ export default function CatalogView({
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-1">
                   <div>
-                    <div className="font-semibold text-[var(--forest-dark)] text-sm leading-tight">{tree.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      {tree.number && <span className="text-[10px] font-bold text-[var(--forest-mid)] bg-[var(--forest-pale)] px-1.5 py-0.5 rounded">№{tree.number}</span>}
+                      <span className="font-semibold text-[var(--forest-dark)] text-sm leading-tight">{tree.name}</span>
+                    </div>
                     <div className="text-xs text-[var(--stone)] mt-0.5">{tree.species}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
