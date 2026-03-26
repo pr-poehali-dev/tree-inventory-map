@@ -90,12 +90,15 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     if (!containerRef.current || mapRef.current) return;
 
     const init = async () => {
-      // Ждём загрузки скрипта Яндекса если он ещё не готов
+      // Загружаем скрипт Яндекс Maps если ещё не загружен
       if (!window.ymaps3) {
-        await new Promise<void>((resolve) => {
-          const interval = setInterval(() => {
-            if (window.ymaps3) { clearInterval(interval); resolve(); }
-          }, 50);
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://api-maps.yandex.ru/v3/?apikey=afad5f2c-891b-43e8-bf0f-01dcf67a93a1&lang=ru_RU';
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Яндекс Maps не загрузился'));
+          document.head.appendChild(script);
         });
       }
       await window.ymaps3.ready;
