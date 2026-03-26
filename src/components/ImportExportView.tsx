@@ -1,18 +1,28 @@
 import { useRef, useState } from 'react';
-import proj4 from 'proj4';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 (местная система координат Минусинска)
-// Откалибровано по опорной точке: X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
-const MSK167 = '+proj=tmerc +lat_0=53.71025 +lon_0=91.69611 +k=1 +x_0=20721.343 +y_0=376469.980 +ellps=krass +towgs84=0,0,0 +units=m +no_defs';
-const WGS84 = 'EPSG:4326';
+// МСК-167 откалибровано по двум опорным точкам:
+// Сосна:  X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
+// Тополь: X=375516.198, Y=19202.592 → lat=53.70008, lon=91.67246
+// Используем аффинное преобразование: прямой пересчёт по двум точкам без proj4
+const P1 = { x: 376469.980, y: 20721.343, lat: 53.71025, lon: 91.69611 };
+const P2 = { x: 375516.198, y: 19202.592, lat: 53.70008, lon: 91.67246 };
+
+const dX = P2.x - P1.x; // -953.782
+const dY = P2.y - P1.y; // -1518.751
+const dLat = P2.lat - P1.lat; // -0.01017
+const dLon = P2.lon - P1.lon; // -0.02365
+
+// Масштабные коэффициенты
+const kLat = dLat / dX; // градус широты на метр X
+const kLon = dLon / dY; // градус долготы на метр Y
 
 function msk167toWGS84(x: number, y: number): [number, number] {
-  // В МСК: X=northing, Y=easting → передаём [Y, X] в proj4
-  const [lng, lat] = proj4(MSK167, WGS84, [y, x]);
-  return [lat, lng];
+  const lat = P1.lat + (x - P1.x) * kLat;
+  const lon = P1.lon + (y - P1.y) * kLon;
+  return [lat, lon];
 }
 
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
