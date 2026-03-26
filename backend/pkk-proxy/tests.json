@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Proxy tile land",
+      "method": "GET",
+      "path": "/?layer=land&z=12&x=3417&y=1476",
+      "expectedStatus": 200
+    }
+  ]
+}

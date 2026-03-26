@@ -19,14 +19,14 @@ interface RosreestrLayerConfig {
   minZoom: number;
 }
 
-// XYZ тайлы публичной кадастровой карты Росреестра (PKK)
-// Работают без авторизации начиная с определённого зума
+const PKK_PROXY = 'https://functions.poehali.dev/74f2f735-ecae-4a92-98fc-e51c90e65de2';
+
 const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
   {
     id: 'land',
     label: 'Земельные участки (ЕГРН)',
     icon: '🟨',
-    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/CadastreObjects/MapServer/tile/{z}/{y}/{x}',
+    url: `${PKK_PROXY}?layer=land&z={z}&x={x}&y={y}`,
     color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     minZoom: 10,
   },
@@ -34,7 +34,7 @@ const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
     id: 'oks',
     label: 'Объекты кап. строительства',
     icon: '🟥',
-    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/GKUOKS/MapServer/tile/{z}/{y}/{x}',
+    url: `${PKK_PROXY}?layer=oks&z={z}&x={x}&y={y}`,
     color: 'bg-red-100 text-red-800 border-red-300',
     minZoom: 10,
   },
@@ -42,7 +42,7 @@ const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
     id: 'nature',
     label: 'Природные территории',
     icon: '🟩',
-    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/ProtectedObjects/MapServer/tile/{z}/{y}/{x}',
+    url: `${PKK_PROXY}?layer=nature&z={z}&x={x}&y={y}`,
     color: 'bg-green-100 text-green-800 border-green-300',
     minZoom: 8,
   },
@@ -50,7 +50,7 @@ const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
     id: 'zouit',
     label: 'ЗОУИТ (энергетика, связь, транспорт)',
     icon: '🟦',
-    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/ZONES/MapServer/tile/{z}/{y}/{x}',
+    url: `${PKK_PROXY}?layer=zouit&z={z}&x={x}&y={y}`,
     color: 'bg-blue-100 text-blue-800 border-blue-300',
     minZoom: 8,
   },
@@ -58,11 +58,10 @@ const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
 
 function makeRosreestrLayer(cfg: RosreestrLayerConfig): L.TileLayer {
   return L.tileLayer(cfg.url, {
-    opacity: 0.7,
+    opacity: 0.75,
     attribution: '© Росреестр',
     maxZoom: 20,
     minZoom: cfg.minZoom,
-    crossOrigin: true,
   });
 }
 
