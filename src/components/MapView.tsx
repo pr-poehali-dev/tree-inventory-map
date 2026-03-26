@@ -60,8 +60,31 @@ function getTreeEmoji(species: string, lifeStatus?: string): string {
 }
 
 function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatus?: string) {
-  const color = lifeStatus === 'cut' ? '#8b8b8b' : STATUS_COLORS[status];
-  const emoji = getTreeEmoji(species, lifeStatus);
+  if (lifeStatus === 'cut') {
+    return L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          width:28px;height:28px;
+          background:#e53e3e;
+          border:3px solid white;
+          border-radius:50%;
+          box-shadow:0 3px 10px rgba(0,0,0,0.35);
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="2" y1="2" x2="12" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="2" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -18],
+    });
+  }
+  const color = STATUS_COLORS[status];
+  const emoji = getTreeEmoji(species);
   return L.divIcon({
     className: '',
     html: `

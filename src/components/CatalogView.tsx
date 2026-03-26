@@ -125,9 +125,12 @@ export default function CatalogView({
                   className="w-16 h-16 object-cover rounded-lg shrink-0"
                 />
               ) : (
-                <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 text-2xl ${tree.lifeStatus === 'cut' ? 'bg-gray-100' : 'bg-[var(--forest-pale)]'}`}>
-                  {tree.lifeStatus === 'cut' ? '🪵'
-                    : tree.species.toLowerCase().includes('кустарник') ? '🌿'
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 ${tree.lifeStatus === 'cut' ? 'bg-red-50' : 'bg-[var(--forest-pale)] text-2xl'}`}>
+                  {tree.lifeStatus === 'cut' ? (
+                    <div className="w-9 h-9 rounded-full bg-red-500 flex items-center justify-center">
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="3" y1="3" x2="15" y2="15" stroke="white" strokeWidth="3" strokeLinecap="round"/><line x1="15" y1="3" x2="3" y2="15" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>
+                    </div>
+                  ) : tree.species.toLowerCase().includes('кустарник') ? '🌿'
                     : (tree.species.toLowerCase().includes('хвойное') || tree.species.toLowerCase().includes('ель') || tree.species.toLowerCase().includes('сосна') || tree.species.toLowerCase().includes('лиственниц') || tree.species.toLowerCase().includes('пихта') || tree.species.toLowerCase().includes('кедр')) ? '🌲'
                     : '🌳'}
                 </div>
@@ -147,7 +150,7 @@ export default function CatalogView({
                       {STATUS_LABELS[tree.status]}
                     </Badge>
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${tree.lifeStatus === 'cut' ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700'}`}>
-                      {tree.lifeStatus === 'cut' ? '🪵 Спиленное (пень)' : '🌿 Живое'}
+                      {tree.lifeStatus === 'cut' ? '✕ Спиленное' : '🌿 Живое'}
                     </span>
                   </div>
                 </div>
