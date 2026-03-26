@@ -4,20 +4,22 @@ import CatalogView from '@/components/CatalogView';
 import StatsView from '@/components/StatsView';
 import ImportExportView from '@/components/ImportExportView';
 import HelpView from '@/components/HelpView';
+import AdminView from '@/components/AdminView';
 import TreeFormDialog from '@/components/TreeFormDialog';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
 import { TreeMarker } from '@/types/tree';
 import { User } from '@/hooks/useAuth';
 
-type Tab = 'map' | 'catalog' | 'stats' | 'import' | 'help';
+type Tab = 'map' | 'catalog' | 'stats' | 'import' | 'help' | 'admin';
 
-const TABS: { id: Tab; label: string; icon: string; short: string }[] = [
+const TABS: { id: Tab; label: string; icon: string; short: string; adminOnly?: boolean }[] = [
   { id: 'map', label: 'Карта', icon: 'Map', short: 'Карта' },
   { id: 'catalog', label: 'Каталог', icon: 'List', short: 'Каталог' },
   { id: 'stats', label: 'Статистика', icon: 'BarChart2', short: 'Стат.' },
   { id: 'import', label: 'Импорт / Экспорт', icon: 'ArrowLeftRight', short: 'И/Э' },
   { id: 'help', label: 'Справка', icon: 'HelpCircle', short: 'Справка' },
+  { id: 'admin', label: 'Пользователи', icon: 'Users', short: 'Адм.', adminOnly: true },
 ];
 
 interface IndexProps {
@@ -27,7 +29,10 @@ interface IndexProps {
 
 export default function Index({ user, onLogout }: IndexProps) {
   const isGuest = !user;
+  const isAdmin = user?.role === 'admin';
+  const isEditor = user?.role === 'editor' || isAdmin;
   const [activeTab, setActiveTab] = useState<Tab>('map');
+  const visibleTabs = TABS.filter(t => !t.adminOnly || isAdmin);
   const [formOpen, setFormOpen] = useState(false);
   const [editingTree, setEditingTree] = useState<TreeMarker | null>(null);
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
@@ -122,7 +127,7 @@ export default function Index({ user, onLogout }: IndexProps) {
         {/* Left sidebar navigation (desktop) */}
         <nav className="hidden md:flex flex-col w-48 bg-white border-r border-[var(--border)] shrink-0">
           <div className="flex-1 py-3 space-y-0.5">
-            {TABS.map(tab => (
+            {visibleTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -149,7 +154,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 <Icon name="LogIn" size={16} />
                 Войти для редактирования
               </button>
-            ) : (
+            ) : isEditor ? (
               <button
                 onClick={() => {
                   setEditingTree(null);
@@ -161,6 +166,10 @@ export default function Index({ user, onLogout }: IndexProps) {
                 <Icon name="Plus" size={16} />
                 Добавить дерево
               </button>
+            ) : (
+              <div className="text-xs text-[var(--stone)] text-center px-2 py-1">
+                Только просмотр. Обратитесь к администратору для получения прав редактирования.
+              </div>
             )}
           </div>
         </nav>
@@ -171,12 +180,12 @@ export default function Index({ user, onLogout }: IndexProps) {
             <div className="flex-1 p-3 overflow-hidden">
               <MapView
                 trees={store.filteredTrees}
-                onMapClick={isGuest ? () => {} : handleMapClick}
-                onEdit={isGuest ? () => {} : handleEdit}
-                onDelete={isGuest ? () => {} : store.deleteTree}
+                onMapClick={isEditor ? handleMapClick : () => {}}
+                onEdit={isEditor ? handleEdit : () => {}}
+                onDelete={isEditor ? store.deleteTree : () => {}}
                 onSelect={store.setSelectedTreeId}
                 selectedTreeId={store.selectedTreeId}
-                isGuest={isGuest}
+                isGuest={!isEditor}
               />
             </div>
           )}
@@ -186,15 +195,15 @@ export default function Index({ user, onLogout }: IndexProps) {
               <CatalogView
                 trees={store.filteredTrees}
                 onSelect={handleSelectTree}
-                onEdit={isGuest ? () => {} : handleEdit}
-                onDelete={isGuest ? () => {} : store.deleteTree}
+                onEdit={isEditor ? handleEdit : () => {}}
+                onDelete={isEditor ? store.deleteTree : () => {}}
                 searchQuery={store.searchQuery}
                 setSearchQuery={store.setSearchQuery}
                 filterSpecies={store.filterSpecies}
                 setFilterSpecies={store.setFilterSpecies}
                 filterStatus={store.filterStatus}
                 setFilterStatus={store.setFilterStatus}
-                isGuest={isGuest}
+                isGuest={!isEditor}
               />
             </div>
           )}
@@ -228,12 +237,22 @@ export default function Index({ user, onLogout }: IndexProps) {
               <HelpView />
             </div>
           )}
+
+          {activeTab === 'admin' && isAdmin && user && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-[var(--border)] bg-white/60">
+                <div className="font-semibold text-[var(--forest-dark)] font-heading">Пользователи</div>
+                <div className="text-xs text-[var(--stone)]">Управление правами доступа</div>
+              </div>
+              <AdminView currentUser={user} />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom nav (mobile) */}
       <nav className="md:hidden flex border-t border-[var(--border)] bg-white shrink-0 z-10">
-        {TABS.map(tab => (
+        {visibleTabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

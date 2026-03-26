@@ -145,4 +145,53 @@ def handler(event: dict, context) -> dict:
         return {'statusCode': 200, 'headers': CORS,
                 'body': json.dumps({'user': {'id': user_id, 'email': email, 'name': name, 'role': role}})}
 
+    # POST list_users (только для admin)
+    if method == 'POST' and action == 'list_users':
+        token = body.get('token') or ''
+        info = verify_token(token)
+        if not info:
+            return {'statusCode': 401, 'headers': CORS, 'body': json.dumps({'error': 'Не авторизован'})}
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(f'SELECT role FROM {SCHEMA}.users WHERE id = %s', (info['id'],))
+        row = cur.fetchone()
+        if not row or row[0] != 'admin':
+            conn.close()
+            return {'statusCode': 403, 'headers': CORS, 'body': json.dumps({'error': 'Доступ запрещён'})}
+
+        cur.execute(f'SELECT id, email, name, role, created_at FROM {SCHEMA}.users ORDER BY created_at')
+        users = [{'id': r[0], 'email': r[1], 'name': r[2], 'role': r[3], 'created_at': str(r[4])} for r in cur.fetchall()]
+        conn.close()
+        return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'users': users})}
+
+    # POST set_role (только для admin)
+    if method == 'POST' and action == 'set_role':
+        token = body.get('token') or ''
+        info = verify_token(token)
+        if not info:
+            return {'statusCode': 401, 'headers': CORS, 'body': json.dumps({'error': 'Не авторизован'})}
+
+        target_id = body.get('user_id')
+        new_role = body.get('role')
+        if not target_id or new_role not in ('user', 'editor', 'admin'):
+            return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'Неверные параметры'})}
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(f'SELECT role FROM {SCHEMA}.users WHERE id = %s', (info['id'],))
+        row = cur.fetchone()
+        if not row or row[0] != 'admin':
+            conn.close()
+            return {'statusCode': 403, 'headers': CORS, 'body': json.dumps({'error': 'Доступ запрещён'})}
+
+        if target_id == info['id']:
+            conn.close()
+            return {'statusCode': 400, 'headers': CORS, 'body': json.dumps({'error': 'Нельзя изменить свою роль'})}
+
+        cur.execute(f'UPDATE {SCHEMA}.users SET role = %s WHERE id = %s', (new_role, target_id))
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': CORS, 'body': json.dumps({'ok': True})}
+
     return {'statusCode': 404, 'headers': CORS, 'body': json.dumps({'error': 'Not found'})}
