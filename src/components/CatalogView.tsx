@@ -59,17 +59,15 @@ export default function CatalogView({
             <SelectContent className="max-h-72">
               <SelectItem value="__all__">Все породы</SelectItem>
               {SPECIES_GROUPS.map((group, gi) => (
-                <>
-                  {gi >= 0 && <SelectSeparator key={`sep-${gi}`} />}
-                  <SelectGroup key={group.group}>
-                    <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1">
-                      <span>{group.icon}</span>{group.group}
-                    </SelectLabel>
-                    {group.items.map(s => (
-                      <SelectItem key={s} value={s} className="pl-6 text-xs">{s}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                </>
+                <SelectGroup key={group.group}>
+                  {gi > 0 && <SelectSeparator />}
+                  <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1">
+                    <span>{group.icon}</span>{group.group}
+                  </SelectLabel>
+                  {group.items.map(s => (
+                    <SelectItem key={s} value={s} className="pl-6 text-xs">{s}</SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -126,7 +124,9 @@ export default function CatalogView({
                 />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-[var(--forest-pale)] flex items-center justify-center shrink-0 text-2xl">
-                  🌲
+                  {tree.species.toLowerCase().includes('кустарник') ? '🌿'
+                    : (tree.species.toLowerCase().includes('хвойное') || tree.species.toLowerCase().includes('ель') || tree.species.toLowerCase().includes('сосна') || tree.species.toLowerCase().includes('лиственниц') || tree.species.toLowerCase().includes('пихта') || tree.species.toLowerCase().includes('кедр')) ? '🌲'
+                    : '🌳'}
                 </div>
               )}
 
