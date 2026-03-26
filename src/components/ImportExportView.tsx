@@ -5,7 +5,9 @@ import { TreeMarker } from '@/types/tree';
 
 // МСК-167 → WGS84: калибровка не задана
 // Добавляй опорные точки: { x, y, lat, lon } и функция пересчитается автоматически
-const _pts: { x: number; y: number; lat: number; lon: number }[] = [];
+const _pts: { x: number; y: number; lat: number; lon: number }[] = [
+  { x: 374197.241, y: 17688.403, lat: 53.68931, lon: 91.65086 }, // Сирень
+];
 
 function msk167toWGS84(x: number, y: number): [number, number] {
   // Нет опорных точек — возвращаем как есть (импорт невозможен без калибровки)
