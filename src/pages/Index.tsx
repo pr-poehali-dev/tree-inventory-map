@@ -21,11 +21,12 @@ const TABS: { id: Tab; label: string; icon: string; short: string }[] = [
 ];
 
 interface IndexProps {
-  user: User;
+  user: User | null;
   onLogout: () => void;
 }
 
 export default function Index({ user, onLogout }: IndexProps) {
+  const isGuest = !user;
   const [activeTab, setActiveTab] = useState<Tab>('map');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTree, setEditingTree] = useState<TreeMarker | null>(null);
@@ -94,14 +95,24 @@ export default function Index({ user, onLogout }: IndexProps) {
             <div className="text-white/50 text-[10px]">деревьев</div>
           </div>
           <div className="flex items-center gap-2 border-l border-white/20 pl-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-white/90 text-xs font-medium leading-tight">{user.name}</div>
-              <div className="text-white/50 text-[10px]">{user.email}</div>
-            </div>
-            <button onClick={onLogout} title="Выйти"
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-all">
-              <Icon name="LogOut" size={15} className="text-white/80" />
-            </button>
+            {user ? (
+              <>
+                <div className="text-right hidden sm:block">
+                  <div className="text-white/90 text-xs font-medium leading-tight">{user.name}</div>
+                  <div className="text-white/50 text-[10px]">{user.email}</div>
+                </div>
+                <button onClick={onLogout} title="Выйти"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-all">
+                  <Icon name="LogOut" size={15} className="text-white/80" />
+                </button>
+              </>
+            ) : (
+              <button onClick={onLogout} title="Войти"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-all">
+                <Icon name="LogIn" size={14} />
+                Войти
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -129,18 +140,28 @@ export default function Index({ user, onLogout }: IndexProps) {
             ))}
           </div>
 
-          <div className="p-3 border-t border-[var(--border)]">
-            <button
-              onClick={() => {
-                setEditingTree(null);
-                setPendingLatLng({ lat: 53.7102, lng: 91.6886 });
-                setFormOpen(true);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              <Icon name="Plus" size={16} />
-              Добавить дерево
-            </button>
+          <div className="p-3 border-t border-[var(--border)] space-y-2">
+            {isGuest ? (
+              <button
+                onClick={onLogout}
+                className="w-full flex items-center gap-2 px-3 py-2.5 bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Icon name="LogIn" size={16} />
+                Войти для редактирования
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setEditingTree(null);
+                  setPendingLatLng({ lat: 53.7102, lng: 91.6886 });
+                  setFormOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Icon name="Plus" size={16} />
+                Добавить дерево
+              </button>
+            )}
           </div>
         </nav>
 
@@ -150,11 +171,12 @@ export default function Index({ user, onLogout }: IndexProps) {
             <div className="flex-1 p-3 overflow-hidden">
               <MapView
                 trees={store.filteredTrees}
-                onMapClick={handleMapClick}
-                onEdit={handleEdit}
-                onDelete={store.deleteTree}
+                onMapClick={isGuest ? () => {} : handleMapClick}
+                onEdit={isGuest ? () => {} : handleEdit}
+                onDelete={isGuest ? () => {} : store.deleteTree}
                 onSelect={store.setSelectedTreeId}
                 selectedTreeId={store.selectedTreeId}
+                isGuest={isGuest}
               />
             </div>
           )}
@@ -164,14 +186,15 @@ export default function Index({ user, onLogout }: IndexProps) {
               <CatalogView
                 trees={store.filteredTrees}
                 onSelect={handleSelectTree}
-                onEdit={handleEdit}
-                onDelete={store.deleteTree}
+                onEdit={isGuest ? () => {} : handleEdit}
+                onDelete={isGuest ? () => {} : store.deleteTree}
                 searchQuery={store.searchQuery}
                 setSearchQuery={store.setSearchQuery}
                 filterSpecies={store.filterSpecies}
                 setFilterSpecies={store.setFilterSpecies}
                 filterStatus={store.filterStatus}
                 setFilterStatus={store.setFilterStatus}
+                isGuest={isGuest}
               />
             </div>
           )}
@@ -192,7 +215,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 <div className="font-semibold text-[var(--forest-dark)] font-heading">Импорт и Экспорт</div>
                 <div className="text-xs text-[var(--stone)]">Обмен данными с другими системами</div>
               </div>
-              <ImportExportView trees={store.trees} onImport={store.importTrees} />
+              <ImportExportView trees={store.trees} onImport={store.importTrees} isGuest={isGuest} />
             </div>
           )}
 

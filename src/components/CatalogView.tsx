@@ -17,6 +17,7 @@ interface Props {
   setFilterSpecies: (v: string) => void;
   filterStatus: TreeStatus | '';
   setFilterStatus: (v: TreeStatus | '') => void;
+  isGuest?: boolean;
 }
 
 export default function CatalogView({
@@ -30,6 +31,7 @@ export default function CatalogView({
   setFilterSpecies,
   filterStatus,
   setFilterStatus,
+  isGuest = false,
 }: Props) {
   const [sortBy, setSortBy] = useState<'name' | 'diameter' | 'height' | 'age'>('name');
 
@@ -169,6 +171,7 @@ export default function CatalogView({
             </div>
 
             <div className="flex border-t border-[var(--border)] divide-x divide-[var(--border)]">
+              {!isGuest && (<>
               <button
                 onClick={e => { e.stopPropagation(); onEdit(tree); }}
                 className="flex-1 py-2 text-xs text-[var(--forest-mid)] hover:bg-[var(--forest-pale)] transition-colors rounded-bl-xl"
@@ -181,6 +184,7 @@ export default function CatalogView({
               >
                 Удалить
               </button>
+              </>)}
             </div>
           </div>
         ))}

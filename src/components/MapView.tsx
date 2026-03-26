@@ -15,6 +15,7 @@ interface Props {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   selectedTreeId: string | null;
+  isGuest?: boolean;
 }
 
 const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
@@ -81,7 +82,7 @@ function createTreeIcon(status: TreeMarker['status'], species: string) {
   });
 }
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -231,28 +232,32 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full rounded-xl overflow-hidden" />
 
-      {/* Add mode button */}
+      {/* Add mode button — только для авторизованных */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
-        <button
-          onClick={() => setAddMode(m => !m)}
-          className={`
-            flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
-            ${addMode
-              ? 'bg-[var(--forest-dark)] text-white ring-2 ring-[var(--forest-light)]'
-              : 'bg-white text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
-            }
-          `}
-        >
-          <span>{addMode ? '📍' : '➕'}</span>
-          {addMode ? 'Кликните на карту' : 'Добавить дерево'}
-        </button>
-        {addMode && (
-          <button
-            onClick={() => setAddMode(false)}
-            className="bg-white/90 text-gray-500 text-xs px-3 py-1.5 rounded-lg shadow hover:bg-white transition-all"
-          >
-            Отмена
-          </button>
+        {!isGuest && (
+          <>
+            <button
+              onClick={() => setAddMode(m => !m)}
+              className={`
+                flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
+                ${addMode
+                  ? 'bg-[var(--forest-dark)] text-white ring-2 ring-[var(--forest-light)]'
+                  : 'bg-white text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
+                }
+              `}
+            >
+              <span>{addMode ? '📍' : '➕'}</span>
+              {addMode ? 'Кликните на карту' : 'Добавить дерево'}
+            </button>
+            {addMode && (
+              <button
+                onClick={() => setAddMode(false)}
+                className="bg-white/90 text-gray-500 text-xs px-3 py-1.5 rounded-lg shadow hover:bg-white transition-all"
+              >
+                Отмена
+              </button>
+            )}
+          </>
         )}
       </div>
 

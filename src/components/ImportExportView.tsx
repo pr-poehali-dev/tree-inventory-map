@@ -66,9 +66,10 @@ const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: 
 interface Props {
   trees: TreeMarker[];
   onImport: (trees: TreeMarker[]) => void;
+  isGuest?: boolean;
 }
 
-export default function ImportExportView({ trees, onImport }: Props) {
+export default function ImportExportView({ trees, onImport, isGuest = false }: Props) {
   const kmlRef  = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
   const txtRef  = useRef<HTMLInputElement>(null);
@@ -286,8 +287,19 @@ export default function ImportExportView({ trees, onImport }: Props) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
+      {/* Гостевое сообщение */}
+      {isGuest && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <Icon name="Lock" size={18} className="text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold text-amber-800 text-sm">Только для авторизованных</div>
+            <div className="text-xs text-amber-700 mt-0.5">Войдите или зарегистрируйтесь, чтобы экспортировать данные и загружать файлы.</div>
+          </div>
+        </div>
+      )}
+
       {/* Экспорт */}
-      <div className="bg-white rounded-xl border border-[var(--border)] p-4">
+      {!isGuest && <div className="bg-white rounded-xl border border-[var(--border)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-[var(--forest-pale)] rounded-lg flex items-center justify-center">
             <Icon name="Download" size={16} className="text-[var(--forest-mid)]" />
@@ -326,10 +338,10 @@ export default function ImportExportView({ trees, onImport }: Props) {
             Экспорт в JSON (резервная копия)
           </Button>
         </div>
-      </div>
+      </div>}
 
       {/* Импорт */}
-      <div className="bg-white rounded-xl border border-[var(--border)] p-4">
+      {!isGuest && <div className="bg-white rounded-xl border border-[var(--border)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
             <Icon name="Upload" size={16} className="text-amber-600" />
@@ -427,7 +439,7 @@ export default function ImportExportView({ trees, onImport }: Props) {
         <input ref={txtRef}  type="file" accept=".txt,.csv" className="hidden" onChange={handleImportTXT} />
         <input ref={kmlRef}  type="file" accept=".kml"      className="hidden" onChange={handleImportKML} />
         <input ref={jsonRef} type="file" accept=".json"     className="hidden" onChange={handleImportJSON} />
-      </div>
+      </div>}
 
       {/* Справка */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">

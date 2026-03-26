@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
 
   if (loading) {
     return (
@@ -24,17 +26,23 @@ function AppRoutes() {
     );
   }
 
-  if (!user) {
-    return <AuthPage onSuccess={() => window.location.reload()} />;
-  }
+  const handleLogout = () => {
+    if (user) { logout(); }
+    else { setShowAuth(true); }
+  };
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index user={user} onLogout={logout} />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      {showAuth && !user && (
+        <AuthPage onSuccess={() => { setShowAuth(false); window.location.reload(); }} onClose={() => setShowAuth(false)} />
+      )}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index user={user} onLogout={handleLogout} />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

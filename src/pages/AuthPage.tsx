@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 
 interface Props {
   onSuccess: () => void;
+  onClose?: () => void;
 }
 
-export default function AuthPage({ onSuccess }: Props) {
+export default function AuthPage({ onSuccess, onClose }: Props) {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
@@ -32,13 +33,16 @@ export default function AuthPage({ onSuccess }: Props) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
-      <div className="w-full max-w-sm">
+    <div className={`flex items-center justify-center p-4 z-[2000] ${onClose ? 'fixed inset-0 bg-black/50 backdrop-blur-sm' : 'min-h-screen bg-[var(--background)]'}`}>
+      <div className="w-full max-w-sm relative">
+        {onClose && (
+          <button onClick={onClose} className="absolute -top-3 -right-3 z-10 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        )}
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 forest-bg rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg">🌲</div>
-          <h1 className="font-bold font-heading text-xl text-[var(--forest-dark)]">Дендрологическая ведомость</h1>
-          <p className="text-sm text-[var(--stone)] mt-1">г. Минусинск и Минусинский район</p>
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 forest-bg rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg">🌲</div>
+          <h1 className="font-bold font-heading text-lg text-[var(--forest-dark)]">Дендрологическая ведомость</h1>
+          <p className="text-xs text-[var(--stone)] mt-1">г. Минусинск и Минусинский район</p>
         </div>
 
         {/* Card */}
