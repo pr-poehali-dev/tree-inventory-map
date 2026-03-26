@@ -8,66 +8,6 @@ import MeasureTool from './MeasureTool';
 
 type MapLayer = 'scheme' | 'satellite' | 'hybrid';
 
-type RosreestrLayerId = 'land' | 'oks' | 'nature' | 'zouit';
-
-interface RosreestrLayerConfig {
-  id: RosreestrLayerId;
-  label: string;
-  icon: string;
-  url: string;
-  color: string;
-  minZoom: number;
-}
-
-const PKK_PROXY = 'https://functions.poehali.dev/74f2f735-ecae-4a92-98fc-e51c90e65de2';
-
-const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
-  {
-    id: 'land',
-    label: 'Земельные участки (ЕГРН)',
-    icon: '🟨',
-    url: `${PKK_PROXY}?layer=land&z={z}&x={x}&y={y}`,
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    minZoom: 10,
-  },
-  {
-    id: 'oks',
-    label: 'Объекты кап. строительства',
-    icon: '🟥',
-    url: `${PKK_PROXY}?layer=oks&z={z}&x={x}&y={y}`,
-    color: 'bg-red-100 text-red-800 border-red-300',
-    minZoom: 10,
-  },
-  {
-    id: 'nature',
-    label: 'Природные территории',
-    icon: '🟩',
-    url: `${PKK_PROXY}?layer=nature&z={z}&x={x}&y={y}`,
-    color: 'bg-green-100 text-green-800 border-green-300',
-    minZoom: 8,
-  },
-  {
-    id: 'zouit',
-    label: 'ЗОУИТ (энергетика, связь, транспорт)',
-    icon: '🟦',
-    url: `${PKK_PROXY}?layer=zouit&z={z}&x={x}&y={y}`,
-    color: 'bg-blue-100 text-blue-800 border-blue-300',
-    minZoom: 8,
-  },
-];
-
-function makeRosreestrLayer(cfg: RosreestrLayerConfig): L.TileLayer {
-  return L.tileLayer(cfg.url, {
-    opacity: 0.75,
-    attribution: '© Росреестр',
-    maxZoom: 20,
-    minZoom: cfg.minZoom,
-    keepBuffer: 4,
-    updateWhenIdle: true,
-    updateWhenZooming: false,
-  });
-}
-
 interface Props {
   trees: TreeMarker[];
   onMapClick: (lat: number, lng: number) => void;
@@ -175,9 +115,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const geoMarkerRef = useRef<L.Marker | null>(null);
   const geoCircleRef = useRef<L.Circle | null>(null);
   const geoWatchRef = useRef<number | null>(null);
-  const rosreestrLayersRef = useRef<Map<RosreestrLayerId, L.TileLayer>>(new Map());
-  const [activeRosreestr, setActiveRosreestr] = useState<Set<RosreestrLayerId>>(new Set());
-  const [showRosreestrPanel, setShowRosreestrPanel] = useState(false);
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
@@ -259,26 +196,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     setGeoActive(false);
     setGeoFollow(false);
     setGeoPos(null);
-  };
-
-  const toggleRosreestrLayer = (id: RosreestrLayerId) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const cfg = ROSREESTR_LAYERS.find(l => l.id === id)!;
-    setActiveRosreestr(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        const wms = rosreestrLayersRef.current.get(id);
-        if (wms) { map.removeLayer(wms); rosreestrLayersRef.current.delete(id); }
-      } else {
-        next.add(id);
-        const wms = makeRosreestrLayer(cfg);
-        wms.addTo(map);
-        rosreestrLayersRef.current.set(id, wms);
-      }
-      return next;
-    });
   };
 
   const shiftTile = (dx: number, dy: number) => {
@@ -512,44 +429,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
             {(tileOffset.x !== 0 || tileOffset.y !== 0) && (
               <div className="text-[9px] text-amber-600 mt-1">{tileOffset.x.toFixed(1)}px / {tileOffset.y.toFixed(1)}px</div>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* Rosreestr layers panel */}
-      <div className="absolute top-36 right-4 z-[1000] flex flex-col items-end gap-2">
-        <button
-          onClick={() => setShowRosreestrPanel(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
-            ${showRosreestrPanel || activeRosreestr.size > 0
-              ? 'bg-[var(--forest-mid)] text-white'
-              : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
-            }`}
-        >
-          🗂 Слои ЕГРН {activeRosreestr.size > 0 && <span className="bg-white/30 text-white rounded-full px-1.5">{activeRosreestr.size}</span>}
-        </button>
-        {showRosreestrPanel && (
-          <div className="bg-white/97 backdrop-blur-sm rounded-xl shadow-lg p-3 flex flex-col gap-2 w-64">
-            <div className="text-[11px] font-semibold text-[var(--forest-dark)] mb-1">Слои Росреестра / НСПД</div>
-            {ROSREESTR_LAYERS.map(layer => {
-              const isActive = activeRosreestr.has(layer.id);
-              return (
-                <button
-                  key={layer.id}
-                  onClick={() => toggleRosreestrLayer(layer.id)}
-                  className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-xs font-medium text-left transition-all
-                    ${isActive ? layer.color + ' border-current' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
-                >
-                  <span className="text-base shrink-0">{layer.icon}</span>
-                  <span className="leading-tight">{layer.label}</span>
-                  <span className="ml-auto shrink-0">{isActive ? '✓' : ''}</span>
-                </button>
-              );
-            })}
-            <div className="text-[9px] text-gray-400 mt-1 border-t pt-1.5">
-              Данные: Росреестр / pkk.rosreestr.ru<br/>
-              ⚠️ Слои видны при приближении от 10–14 масштаба
-            </div>
           </div>
         )}
       </div>
