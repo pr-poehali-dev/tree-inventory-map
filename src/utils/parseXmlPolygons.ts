@@ -5,46 +5,79 @@ export interface XmlPolygon {
   properties: Record<string, string>;
 }
 
-function parseCoordString(str: string): [number, number][] {
-  return str.trim().split(/\s+/).map(pair => {
-    const parts = pair.split(',');
-    if (parts.length >= 2) {
-      return [parseFloat(parts[0]), parseFloat(parts[1])] as [number, number];
-    }
-    return null;
-  }).filter(Boolean) as [number, number][];
+let idCounter = 0;
+
+function nextId() {
+  return `xml-${Date.now()}-${++idCounter}`;
 }
 
-function parseSpaceSeparated(str: string): [number, number][] {
-  const nums = str.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
-  const result: [number, number][] = [];
-  for (let i = 0; i + 1 < nums.length; i += 2) {
-    result.push([nums[i], nums[i + 1]]);
+// Получить все элементы по локальному имени тега (игнорируя namespace)
+function byTag(node: Document | Element, localName: string): Element[] {
+  const result: Element[] = [];
+  const all = node.getElementsByTagName('*');
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].localName.toLowerCase() === localName.toLowerCase()) {
+      result.push(all[i]);
+    }
   }
   return result;
 }
 
-let idCounter = 0;
+function firstByTag(node: Document | Element, ...names: string[]): Element | null {
+  for (const name of names) {
+    const els = byTag(node, name);
+    if (els.length > 0) return els[0];
+  }
+  return null;
+}
+
+function textOf(node: Document | Element, ...names: string[]): string {
+  const el = firstByTag(node, ...names);
+  return el?.textContent?.trim() ?? '';
+}
+
+// Парсим строку координат в пары [lng, lat]
+function parsePairs(str: string): [number, number][] {
+  const nums = str.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && isFinite(n));
+  const pairs: [number, number][] = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    pairs.push([nums[i], nums[i + 1]]);
+  }
+  return pairs;
+}
+
+// Определяем порядок координат — Росреестр даёт lat/lng, нам нужен lng/lat
+function fixOrder(pairs: [number, number][]): [number, number][] {
+  if (pairs.length === 0) return pairs;
+  const [a, b] = pairs[0];
+  // Россия: lat 40-80, lng 20-190
+  // Если первое число — широта (40-80), второе — долгота (20-190) → swap
+  if (a >= 40 && a <= 80 && b >= 20 && b <= 190) {
+    return pairs.map(([x, y]) => [y, x]);
+  }
+  return pairs;
+}
 
 // KML
 function parseKml(doc: Document): XmlPolygon[] {
   const polygons: XmlPolygon[] = [];
-  const placemarks = doc.querySelectorAll('Placemark');
+  const placemarks = byTag(doc, 'Placemark');
 
   placemarks.forEach(pm => {
-    const name = pm.querySelector('name')?.textContent?.trim() ?? `Участок ${++idCounter}`;
-    const desc = pm.querySelector('description')?.textContent?.trim() ?? '';
-    const coordsEls = pm.querySelectorAll('Polygon outerBoundaryIs LinearRing coordinates, Polygon coordinates');
+    const name = textOf(pm, 'name') || `Участок ${++idCounter}`;
+    const desc = textOf(pm, 'description');
+    const coordEls = byTag(pm, 'coordinates');
 
-    coordsEls.forEach(el => {
-      const coords = parseCoordString(el.textContent ?? '');
-      if (coords.length >= 3) {
-        polygons.push({
-          id: `xml-${Date.now()}-${++idCounter}`,
-          label: name,
-          coordinates: coords,
-          properties: { description: desc },
-        });
+    coordEls.forEach(el => {
+      const text = el.textContent ?? '';
+      // KML формат: lng,lat,alt или lng,lat
+      const pairs: [number, number][] = text.trim().split(/\s+/).map(token => {
+        const parts = token.split(',').map(Number);
+        return parts.length >= 2 ? [parts[0], parts[1]] as [number, number] : null;
+      }).filter(Boolean) as [number, number][];
+
+      if (pairs.length >= 3) {
+        polygons.push({ id: nextId(), label: name, coordinates: pairs, properties: { description: desc } });
       }
     });
   });
@@ -56,75 +89,75 @@ function parseKml(doc: Document): XmlPolygon[] {
 function parseGml(doc: Document): XmlPolygon[] {
   const polygons: XmlPolygon[] = [];
 
-  // Ищем любые элементы с координатами полигонов
-  const selectors = [
-    'posList', 'coordinates', 'pos',
-    'gml\\:posList', 'gml\\:coordinates',
-  ];
+  // Теги с координатами
+  const coordTags = ['posList', 'pos', 'coordinates', 'Ordinate'];
+  const coordElements: Element[] = [];
+  coordTags.forEach(tag => coordElements.push(...byTag(doc, tag)));
 
-  const processedParents = new Set<Element>();
+  const processed = new Set<string>();
 
-  selectors.forEach(sel => {
-    doc.querySelectorAll(sel).forEach(el => {
-      const parent = el.closest(
-        'Parcel, parcel, Object, object, SpatialElement, spatialElement, ' +
-        'featureMember, Feature, feature, Polygon, polygon, MultiPolygon'
-      ) ?? el.parentElement?.parentElement ?? el.parentElement;
+  coordElements.forEach(el => {
+    const text = el.textContent ?? '';
+    let pairs = parsePairs(text);
+    if (pairs.length < 3) return;
+    pairs = fixOrder(pairs);
 
-      if (!parent || processedParents.has(parent)) return;
-      processedParents.add(parent);
+    // Поднимаемся вверх чтобы найти родительский объект
+    let parent: Element | null = el;
+    const objectTags = ['parcel', 'object', 'spatialElement', 'entityspatial',
+      'boundary', 'contour', 'plot', 'featuremember', 'feature',
+      'polygon', 'multipolygon', 'geometry'];
 
-      const text = el.textContent ?? '';
-      let coords = parseSpaceSeparated(text);
+    for (let i = 0; i < 8; i++) {
+      parent = parent?.parentElement ?? null;
+      if (!parent) break;
+      if (objectTags.includes(parent.localName.toLowerCase())) break;
+    }
 
-      // Если формат "y x" (Росреестр — lat lng), меняем порядок
-      // Определяем по диапазону: lng России ~20-180, lat ~40-80
-      if (coords.length > 0) {
-        const [first0, first1] = coords[0];
-        // Если первое число похоже на широту (40-80), а второе на долготу (20-190)
-        if (first0 >= 40 && first0 <= 80 && first1 >= 20 && first1 <= 190) {
-          coords = coords.map(([a, b]) => [b, a]); // swap lat/lng → lng/lat
-        }
-      }
+    const key = parent ? (parent.getAttribute('id') || parent.outerHTML.slice(0, 80)) : text.slice(0, 40);
+    if (processed.has(key)) return;
+    processed.add(key);
 
-      if (coords.length < 3) return;
+    // Кадастровый номер
+    const label =
+      textOf(parent ?? doc, 'CadastralNumber', 'cadastralnumber', 'NumberKvartal',
+        'NumberRecord', 'Name', 'name', 'CN') ||
+      parent?.getAttribute('CadastralNumber') ||
+      parent?.getAttribute('id') ||
+      `Участок ${++idCounter}`;
 
-      // Определяем метку
-      const label =
-        parent.querySelector('CadastralNumber, cadastralNumber, cn, CN')?.textContent?.trim() ||
-        parent.querySelector('Name, name')?.textContent?.trim() ||
-        parent.getAttribute('CadastralNumber') ||
-        parent.getAttribute('id') ||
-        `Участок ${++idCounter}`;
-
-      // Собираем атрибуты
-      const properties: Record<string, string> = {};
-      ['Area', 'area', 'CadastralNumber', 'Category', 'category', 'Type', 'type'].forEach(attr => {
-        const val = parent.querySelector(attr)?.textContent?.trim() || parent.getAttribute(attr);
-        if (val) properties[attr] = val;
-      });
-
-      polygons.push({
-        id: `xml-${Date.now()}-${++idCounter}`,
-        label,
-        coordinates: coords,
-        properties,
-      });
+    const properties: Record<string, string> = {};
+    ['Area', 'area', 'Category', 'category', 'TypeDoc', 'Status', 'status'].forEach(tag => {
+      const val = textOf(parent ?? doc, tag);
+      if (val) properties[tag] = val;
     });
+
+    polygons.push({ id: nextId(), label, coordinates: pairs, properties });
   });
 
   return polygons;
 }
 
 export function parseXmlPolygons(xmlText: string): XmlPolygon[] {
+  idCounter = 0;
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, 'application/xml');
 
   const parseError = doc.querySelector('parsererror');
-  if (parseError) throw new Error('Ошибка парсинга XML файла');
+  if (parseError) {
+    throw new Error('Ошибка парсинга XML: ' + parseError.textContent?.slice(0, 200));
+  }
 
-  const rootTag = doc.documentElement.tagName.toLowerCase();
+  const rootTag = doc.documentElement.localName.toLowerCase();
+  console.log('[XML import] root tag:', rootTag, '| total elements:', doc.getElementsByTagName('*').length);
 
-  if (rootTag.includes('kml')) return parseKml(doc);
-  return parseGml(doc);
+  let result: XmlPolygon[];
+  if (rootTag === 'kml') {
+    result = parseKml(doc);
+  } else {
+    result = parseGml(doc);
+  }
+
+  console.log('[XML import] parsed polygons:', result.length, result.map(p => p.label));
+  return result;
 }
