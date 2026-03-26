@@ -8,6 +8,7 @@ import TreeFormDialog from '@/components/TreeFormDialog';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
 import { TreeMarker } from '@/types/tree';
+import { User } from '@/hooks/useAuth';
 
 type Tab = 'map' | 'catalog' | 'stats' | 'import' | 'help';
 
@@ -19,7 +20,12 @@ const TABS: { id: Tab; label: string; icon: string; short: string }[] = [
   { id: 'help', label: 'Справка', icon: 'HelpCircle', short: 'Справка' },
 ];
 
-export default function Index() {
+interface IndexProps {
+  user: User;
+  onLogout: () => void;
+}
+
+export default function Index({ user, onLogout }: IndexProps) {
   const [activeTab, setActiveTab] = useState<Tab>('map');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTree, setEditingTree] = useState<TreeMarker | null>(null);
@@ -86,6 +92,16 @@ export default function Index() {
           <div className="text-right">
             <div className="text-white font-bold font-heading text-lg leading-tight">{total}</div>
             <div className="text-white/50 text-[10px]">деревьев</div>
+          </div>
+          <div className="flex items-center gap-2 border-l border-white/20 pl-3">
+            <div className="text-right hidden sm:block">
+              <div className="text-white/90 text-xs font-medium leading-tight">{user.name}</div>
+              <div className="text-white/50 text-[10px]">{user.email}</div>
+            </div>
+            <button onClick={onLogout} title="Выйти"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-all">
+              <Icon name="LogOut" size={15} className="text-white/80" />
+            </button>
           </div>
         </div>
       </header>
