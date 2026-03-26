@@ -85,7 +85,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" style={{ overflowY: 'auto' }}>
         <DialogHeader>
           <DialogTitle className="font-heading text-[var(--forest-dark)] flex items-center gap-2">
             <Icon name="TreePine" size={20} className="text-[var(--forest-mid)]" />
@@ -223,7 +223,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
               <SelectTrigger className="border-[var(--forest-light)]/40">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[9999]" position="popper" sideOffset={4}>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => (
                   <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
@@ -238,7 +238,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
               <SelectTrigger className="border-[var(--forest-light)]/40">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[9999]" position="popper" sideOffset={4}>
                 {Object.entries(CONDITION_LABELS).map(([k, v]) => (
                   <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
