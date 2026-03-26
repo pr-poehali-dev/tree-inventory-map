@@ -1,9 +1,12 @@
-"""Прокси для тайлов Публичной кадастровой карты Росреестра (pkk.rosreestr.ru)."""
+"""Прокси для тайлов Публичной кадастровой карты Росреестра (pkk.rosreestr.ru) с кэшем в S3."""
 import base64
 import math
+import os
 import ssl
 import urllib.request
 import urllib.parse
+import boto3
+from botocore.exceptions import ClientError
 
 SSL_CTX = ssl.create_default_context()
 SSL_CTX.check_hostname = False
@@ -30,6 +33,14 @@ LAYER_IDS = {
     'zouit':  'show:16,15,14,13,12,11,10',
 }
 
+def get_s3():
+    return boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+
 def tile_to_bbox_3857(z, x, y):
     n = 2 ** z
     lon1 = x / n * 360 - 180
@@ -42,7 +53,7 @@ def tile_to_bbox_3857(z, x, y):
 
 
 def handler(event: dict, context) -> dict:
-    """Проксирует тайлы кадастровой карты Росреестра, обходя CORS."""
+    """Проксирует тайлы кадастровой карты Росреестра с кэшированием в S3."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
 
@@ -55,6 +66,26 @@ def handler(event: dict, context) -> dict:
     except ValueError:
         return {'statusCode': 400, 'headers': CORS, 'body': 'bad params'}
 
+    cache_key = f'pkk-tiles/{layer}/{z}/{x}/{y}.png'
+
+    # Проверяем кэш в S3
+    try:
+        s3 = get_s3()
+        obj = s3.get_object(Bucket='files', Key=cache_key)
+        data = obj['Body'].read()
+        encoded = base64.b64encode(data).decode('utf-8')
+        return {
+            'statusCode': 200,
+            'headers': {**CORS, 'Content-Type': 'image/png'},
+            'body': encoded,
+            'isBase64Encoded': True,
+        }
+    except ClientError:
+        pass  # Не в кэше — идём к Росреестру
+    except Exception:
+        pass
+
+    # Запрашиваем у Росреестра
     xmin, ymin, xmax, ymax = tile_to_bbox_3857(z, x, y)
     bbox = f'{xmin},{ymin},{xmax},{ymax}'
     service = SERVICES.get(layer, SERVICES['land'])
@@ -73,7 +104,6 @@ def handler(event: dict, context) -> dict:
     })
 
     url = f'https://pkk.rosreestr.ru/arcgis/rest/services/{service}/export?{qs}'
-
     req = urllib.request.Request(url, headers={
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://pkk.rosreestr.ru/',
@@ -81,15 +111,21 @@ def handler(event: dict, context) -> dict:
     })
 
     try:
-        with urllib.request.urlopen(req, timeout=15, context=SSL_CTX) as resp:
+        with urllib.request.urlopen(req, timeout=20, context=SSL_CTX) as resp:
             data = resp.read()
-            content_type = resp.headers.get('Content-Type', 'image/png')
             if not data or len(data) < 100:
                 return {'statusCode': 204, 'headers': CORS, 'body': ''}
+
+            # Сохраняем в S3-кэш
+            try:
+                s3.put_object(Bucket='files', Key=cache_key, Body=data, ContentType='image/png')
+            except Exception:
+                pass
+
             encoded = base64.b64encode(data).decode('utf-8')
             return {
                 'statusCode': 200,
-                'headers': {**CORS, 'Content-Type': content_type},
+                'headers': {**CORS, 'Content-Type': 'image/png'},
                 'body': encoded,
                 'isBase64Encoded': True,
             }

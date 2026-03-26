@@ -62,6 +62,9 @@ function makeRosreestrLayer(cfg: RosreestrLayerConfig): L.TileLayer {
     attribution: '© Росреестр',
     maxZoom: 20,
     minZoom: cfg.minZoom,
+    keepBuffer: 4,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
   });
 }
 
