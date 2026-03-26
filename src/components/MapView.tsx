@@ -90,6 +90,14 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     if (!containerRef.current || mapRef.current) return;
 
     const init = async () => {
+      // Ждём загрузки скрипта Яндекса если он ещё не готов
+      if (!window.ymaps3) {
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(() => {
+            if (window.ymaps3) { clearInterval(interval); resolve(); }
+          }, 50);
+        });
+      }
       await window.ymaps3.ready;
       const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapListener } = window.ymaps3;
 
