@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 
-type MapLayer = 'osm' | 'esri_satellite' | 'esri_hybrid' | 'google_map' | 'google_satellite' | 'google_hybrid';
+type MapLayer = 'osm' | 'esri_satellite' | 'esri_hybrid' | 'google_map' | 'google_satellite' | 'google_hybrid' | 'yandex_map' | 'yandex_satellite';
 
 interface Props {
   trees: TreeMarker[];
@@ -17,9 +17,10 @@ interface Props {
 
 const LAYER_GROUPS: { label: string; layers: { key: MapLayer; label: string }[] }[] = [
   {
-    label: 'OpenStreetMap',
+    label: 'Яндекс',
     layers: [
-      { key: 'osm', label: 'Схема' },
+      { key: 'yandex_map',       label: 'Карта' },
+      { key: 'yandex_satellite', label: 'Спутник' },
     ],
   },
   {
@@ -37,11 +38,26 @@ const LAYER_GROUPS: { label: string; layers: { key: MapLayer; label: string }[] 
       { key: 'esri_hybrid',    label: 'Гибрид' },
     ],
   },
+  {
+    label: 'OpenStreetMap',
+    layers: [
+      { key: 'osm', label: 'Схема' },
+    ],
+  },
 ];
 
 function getTileLayer(type: MapLayer): L.TileLayer {
   switch (type) {
-
+    case 'yandex_map':
+      return L.tileLayer(
+        'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+        { attribution: '© Яндекс', maxZoom: 19 }
+      );
+    case 'yandex_satellite':
+      return L.tileLayer(
+        'https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+        { attribution: '© Яндекс', maxZoom: 19 }
+      );
     case 'google_map':
       return L.tileLayer(
         'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
@@ -122,8 +138,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>(() => {
     const saved = localStorage.getItem('mapLayer') as MapLayer;
-    const valid: MapLayer[] = ['osm', 'esri_satellite', 'esri_hybrid', 'google_map', 'google_satellite', 'google_hybrid'];
-    return valid.includes(saved) ? saved : 'osm';
+    const valid: MapLayer[] = ['osm', 'esri_satellite', 'esri_hybrid', 'google_map', 'google_satellite', 'google_hybrid', 'yandex_map', 'yandex_satellite'];
+    return valid.includes(saved) ? saved : 'yandex_map';
   });
   const [showLayerPicker, setShowLayerPicker] = useState(false);
   const [showOffset, setShowOffset] = useState(false);
