@@ -1,7 +1,18 @@
 import { useRef, useState } from 'react';
+import proj4 from 'proj4';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
+
+// МСК-167 (местная система координат Красноярского края, зона Минусинска)
+// Параметры: осевой меридиан 93°, false easting 106797.80, false northing -5578022.50
+const MSK167 = '+proj=tmerc +lat_0=0 +lon_0=93 +k=1 +x_0=106797.80 +y_0=-5578022.50 +ellps=krass +towgs84=23.57,-140.95,-79.8,0,0.35,0.79,-0.22 +units=m +no_defs';
+const WGS84 = 'EPSG:4326';
+
+function msk167toWGS84(x: number, y: number): [number, number] {
+  const [lng, lat] = proj4(MSK167, WGS84, [y, x]);
+  return [lat, lng];
+}
 
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
   '542': { name: 'Дерево лиственное', species: 'Лиственное дерево', condition: 'healthy' },
@@ -111,13 +122,14 @@ export default function ImportExportView({ trees, onImport }: Props) {
           return;
         }
         const [rawName, rawX, rawY, rawCode] = parts;
-        const lat = parseFloat(rawX.replace(',', '.'));
-        const lng = parseFloat(rawY.replace(',', '.'));
+        const rawXf = parseFloat(rawX.replace(',', '.'));
+        const rawYf = parseFloat(rawY.replace(',', '.'));
         const code = rawCode?.trim();
-        if (isNaN(lat) || isNaN(lng)) {
+        if (isNaN(rawXf) || isNaN(rawYf)) {
           skipped.push(`Строка ${i + 1}: некорректные координаты («${line.slice(0, 40)}»)`);
           return;
         }
+        const [lat, lng] = msk167toWGS84(rawXf, rawYf);
         const treeInfo = TREE_CODE_MAP[code] ?? {
           name: rawName || `Объект ${i + 1}`,
           species: 'Не определено',
@@ -288,6 +300,7 @@ export default function ImportExportView({ trees, onImport }: Props) {
             <div>
               <div className="font-medium mb-0.5">Формат TXT: имя, X, Y, код</div>
               <div className="text-purple-600">542 — лиственные · 543 — хвойные · 560 — кустарники</div>
+              <div className="text-purple-500 mt-0.5">Координаты пересчитываются из МСК-167 в GPS автоматически</div>
             </div>
           </div>
         </div>
