@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 
-type MapLayer = 'yandex_map' | 'yandex_satellite';
+type MapLayer = 'osm' | 'yandex_map' | 'yandex_satellite';
 
 interface Props {
   trees: TreeMarker[];
@@ -16,6 +16,12 @@ interface Props {
 }
 
 const LAYER_GROUPS: { label: string; layers: { key: MapLayer; label: string }[] }[] = [
+  {
+    label: 'OpenStreetMap',
+    layers: [
+      { key: 'osm', label: 'Схема' },
+    ],
+  },
   {
     label: 'Яндекс',
     layers: [
@@ -39,8 +45,8 @@ function getTileLayer(type: MapLayer): L.TileLayer {
       );
     default:
       return L.tileLayer(
-        'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
-        { attribution: '© Яндекс', maxZoom: 19 }
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        { attribution: '© OpenStreetMap © CARTO', maxZoom: 20 }
       );
   }
 }
@@ -92,8 +98,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>(() => {
     const saved = localStorage.getItem('mapLayer') as MapLayer;
-    const valid: MapLayer[] = ['yandex_map', 'yandex_satellite'];
-    return valid.includes(saved) ? saved : 'yandex_map';
+    const valid: MapLayer[] = ['osm', 'yandex_map', 'yandex_satellite'];
+    return valid.includes(saved) ? saved : 'osm';
   });
   const [showLayerPicker, setShowLayerPicker] = useState(false);
   const [showOffset, setShowOffset] = useState(false);
