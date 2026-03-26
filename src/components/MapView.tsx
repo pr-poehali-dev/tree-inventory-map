@@ -62,8 +62,25 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     return saved === 'yandex_satellite' ? 'yandex_satellite' : 'yandex_map';
   });
   const [showLayerPicker, setShowLayerPicker] = useState(false);
+  const [showOffset, setShowOffset] = useState(false);
+  const [markerOffset, setMarkerOffset] = useState({ lat: 0, lng: 0 });
   const addModeRef = useRef(addMode);
   const onMapClickRef = useRef(onMapClick);
+
+  const shiftMarkers = (dlat: number, dlng: number) => {
+    setMarkerOffset(o => ({ lat: o.lat + dlat, lng: o.lng + dlng }));
+  };
+
+  const metersToCoord = () => {
+    const map = mapRef.current;
+    if (!map) return { lat: 0, lng: 0 };
+    const zoom = map.zoom ?? 15;
+    const lat = map.center?.[1] ?? 53.7102;
+    const latStep = 1 / (111320);
+    const lngStep = 1 / (111320 * Math.cos((lat * Math.PI) / 180));
+    const px = Math.pow(2, zoom);
+    return { lat: latStep * 256 / px, lng: lngStep * 256 / px };
+  };
 
   useEffect(() => { addModeRef.current = addMode; }, [addMode]);
   useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
@@ -192,7 +209,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         `;
 
         const balloon = new (YMapMarker as YMaps)(
-          { coordinates: [tree.lng, tree.lat], anchor: { x: 0.5, y: 1.2 } },
+          { coordinates: [tree.lng + markerOffset.lng, tree.lat + markerOffset.lat], anchor: { x: 0.5, y: 1.2 } },
           popupDiv
         );
 
@@ -201,13 +218,13 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       });
 
       const marker = new (YMapMarker as YMaps)(
-        { coordinates: [tree.lng, tree.lat], anchor: { x: 0.5, y: 1 } },
+        { coordinates: [tree.lng + markerOffset.lng, tree.lat + markerOffset.lat], anchor: { x: 0.5, y: 1 } },
         el
       );
       map.addChild(marker);
       markersRef.current.set(tree.id, marker);
     });
-  }, [trees, onEdit, onDelete, onSelect]);
+  }, [trees, onEdit, onDelete, onSelect, markerOffset]);
 
   // Центрирование на выбранном дереве
   useEffect(() => {
@@ -281,6 +298,37 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                   }`}
               >{label}</button>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Offset panel */}
+      <div className="absolute top-16 right-4 z-[1000] flex flex-col items-end gap-2">
+        <button
+          onClick={e => { e.stopPropagation(); setShowOffset(v => !v); }}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
+            ${showOffset ? 'bg-amber-500 text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
+        >
+          ⊹ Сдвиг
+          {(markerOffset.lat !== 0 || markerOffset.lng !== 0) && (
+            <span className="ml-1 bg-amber-200 text-amber-800 rounded px-1 text-[10px]">●</span>
+          )}
+        </button>
+        {showOffset && (
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex flex-col items-center gap-1" onClick={e => e.stopPropagation()}>
+            <div className="text-[10px] text-[var(--stone)] mb-1 font-medium">Сдвиг объектов (1 м/шаг)</div>
+            <button onClick={() => { const s = metersToCoord(); shiftMarkers(s.lat, 0); }}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg">↑</button>
+            <div className="flex gap-1">
+              <button onClick={() => { const s = metersToCoord(); shiftMarkers(0, -s.lng); }}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg">←</button>
+              <button onClick={() => setMarkerOffset({ lat: 0, lng: 0 })}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-400 text-sm font-bold">✕</button>
+              <button onClick={() => { const s = metersToCoord(); shiftMarkers(0, s.lng); }}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg">→</button>
+            </div>
+            <button onClick={() => { const s = metersToCoord(); shiftMarkers(-s.lat, 0); }}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg">↓</button>
           </div>
         )}
       </div>
