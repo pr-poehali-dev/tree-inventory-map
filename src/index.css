@@ -61,6 +61,12 @@
   }
 }
 
+/* Radix UI диалоги поверх Leaflet */
+[data-radix-dialog-overlay],
+[data-radix-dialog-content] {
+  z-index: 2000 !important;
+}
+
 /* Leaflet fixes */
 .leaflet-container {
   font-family: "Golos Text", sans-serif !important;
