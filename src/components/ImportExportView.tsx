@@ -68,9 +68,9 @@ function msk167toWGS84(xMsk: number, yMsk: number): [number, number] {
 }
 
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
-  '542': { name: 'Дерево лиственное', species: 'Лиственное дерево', condition: 'healthy' },
-  '543': { name: 'Дерево хвойное', species: 'Хвойное дерево', condition: 'healthy' },
-  '560': { name: 'Кустарник', species: 'Кустарник', condition: 'healthy' },
+  '542': { name: 'Дерево лиственное', species: 'Лиственное', condition: 'healthy' },
+  '543': { name: 'Дерево хвойное',    species: 'Хвойное',    condition: 'healthy' },
+  '560': { name: 'Кустарник',         species: 'Кустарник',  condition: 'healthy' },
 };
 
 interface Props {
