@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 (местная система координат Красноярского края, зона Минусинска)
-// Параметры: осевой меридиан 93°, false easting 106797.80, false northing -5578022.50
-const MSK167 = '+proj=tmerc +lat_0=0 +lon_0=93 +k=1 +x_0=106797.80 +y_0=-5578022.50 +ellps=krass +towgs84=23.57,-140.95,-79.8,0,0.35,0.79,-0.22 +units=m +no_defs';
+// МСК-167 (местная система координат Минусинска)
+// Откалибровано по опорной точке: X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
+const MSK167 = '+proj=tmerc +lat_0=53.71025 +lon_0=91.69611 +k=1 +x_0=20721.343 +y_0=376469.980 +ellps=krass +towgs84=0,0,0 +units=m +no_defs';
 const WGS84 = 'EPSG:4326';
 
 function msk167toWGS84(x: number, y: number): [number, number] {
+  // В МСК: X=northing, Y=easting → передаём [Y, X] в proj4
   const [lng, lat] = proj4(MSK167, WGS84, [y, x]);
   return [lat, lng];
 }
