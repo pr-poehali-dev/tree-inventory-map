@@ -3,33 +3,43 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 → WGS84: полное аффинное преобразование по 3 опорным точкам
+// МСК-167 → WGS84: аффинное преобразование по 4 опорным точкам (МНК)
 // P1 Сосна:  X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
 // P2 Тополь: X=375516.198, Y=19202.592 → lat=53.70008, lon=91.67246
 // P3 Берёза: X=373632.904, Y=22365.750 → lat=53.68502, lon=91.72181
-// Аффинное преобразование: lat = a0 + a1*X + a2*Y,  lon = b0 + b1*X + b2*Y
-// Решение системы 3x3 методом Крамера
-const _p = [
+// P4 Сирень: X=374197.241, Y=17688.403 → lat=53.68932, lon=91.65086
+// lat = a0 + a1*X + a2*Y,  lon = b0 + b1*X + b2*Y  (МНК по 4 точкам)
+const _pts = [
   { x: 376469.980, y: 20721.343, lat: 53.71025, lon: 91.69611 },
   { x: 375516.198, y: 19202.592, lat: 53.70008, lon: 91.67246 },
   { x: 373632.904, y: 22365.750, lat: 53.68502, lon: 91.72181 },
+  { x: 374197.241, y: 17688.403, lat: 53.68932, lon: 91.65086 },
 ];
-function _solveAffine(pts: typeof _p) {
-  const [p1, p2, p3] = pts;
-  const D = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
-  const solveFor = (z: 'lat' | 'lon') => {
-    const a0 = (p1[z] * (p2.x * p3.y - p3.x * p2.y) + p2[z] * (p3.x * p1.y - p1.x * p3.y) + p3[z] * (p1.x * p2.y - p2.x * p1.y)) / D;
-    const a1 = (p1[z] * (p2.y - p3.y) + p2[z] * (p3.y - p1.y) + p3[z] * (p1.y - p2.y)) / D;
-    const a2 = (p1[z] * (p3.x - p2.x) + p2[z] * (p1.x - p3.x) + p3[z] * (p2.x - p1.x)) / D;
-    return { a0, a1, a2 };
-  };
-  return { lat: solveFor('lat'), lon: solveFor('lon') };
+function _lsq(pts: typeof _pts, z: 'lat' | 'lon') {
+  const n = pts.length;
+  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0, sxz = 0, syz = 0, sz = 0;
+  for (const p of pts) {
+    sx += p.x; sy += p.y; sx2 += p.x * p.x; sy2 += p.y * p.y;
+    sxy += p.x * p.y; sxz += p.x * p[z]; syz += p.y * p[z]; sz += p[z];
+  }
+  // Нормальные уравнения МНК: [n, sx, sy; sx, sx2, sxy; sy, sxy, sy2] * [a0,a1,a2] = [sz, sxz, syz]
+  const A = [[n, sx, sy], [sx, sx2, sxy], [sy, sxy, sy2]];
+  const b = [sz, sxz, syz];
+  // Решение методом Крамера 3x3
+  const det = (m: number[][]) =>
+    m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+   -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+   +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  const D = det(A);
+  const repl = (col: number) => A.map((row, i) => row.map((v, j) => j === col ? b[i] : v));
+  return [det(repl(0))/D, det(repl(1))/D, det(repl(2))/D];
 }
-const _affine = _solveAffine(_p);
+const _cLat = _lsq(_pts, 'lat');
+const _cLon = _lsq(_pts, 'lon');
 
 function msk167toWGS84(x: number, y: number): [number, number] {
-  const lat = _affine.lat.a0 + _affine.lat.a1 * x + _affine.lat.a2 * y;
-  const lon = _affine.lon.a0 + _affine.lon.a1 * x + _affine.lon.a2 * y;
+  const lat = _cLat[0] + _cLat[1] * x + _cLat[2] * y;
+  const lon = _cLon[0] + _cLon[1] * x + _cLon[2] * y;
   return [lat, lon];
 }
 
