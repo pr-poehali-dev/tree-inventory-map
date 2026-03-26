@@ -169,16 +169,37 @@ export default function Index() {
         {/* Content area */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {activeTab === 'map' && (
-            <div className="flex-1 p-3 overflow-hidden">
-              <MapView
-                trees={store.filteredTrees}
-                onMapClick={handleMapClick}
-                onEdit={handleEdit}
-                onDelete={store.deleteTree}
-                onSelect={store.setSelectedTreeId}
-                selectedTreeId={store.selectedTreeId}
-                xmlPolygons={xmlPolygons}
-              />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* XML import bar — мобиль */}
+              <div className="md:hidden flex items-center gap-2 px-3 py-2 bg-white border-b border-[var(--border)] shrink-0">
+                <button
+                  onClick={() => xmlInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--forest-light)]/40 hover:bg-[var(--forest-pale)] text-[var(--forest-dark)] rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Icon name="FileCode" size={14} />
+                  Импорт XML
+                </button>
+                {xmlPolygons.length > 0 && (
+                  <button
+                    onClick={() => setXmlPolygons([])}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Icon name="X" size={13} />
+                    Убрать ({xmlPolygons.length})
+                  </button>
+                )}
+              </div>
+              <div className="flex-1 p-3 overflow-hidden">
+                <MapView
+                  trees={store.filteredTrees}
+                  onMapClick={handleMapClick}
+                  onEdit={handleEdit}
+                  onDelete={store.deleteTree}
+                  onSelect={store.setSelectedTreeId}
+                  selectedTreeId={store.selectedTreeId}
+                  xmlPolygons={xmlPolygons}
+                />
+              </div>
             </div>
           )}
 
