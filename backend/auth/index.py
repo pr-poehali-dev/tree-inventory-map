@@ -12,6 +12,8 @@ CORS = {
     'Access-Control-Allow-Headers': 'Content-Type, X-Session-Id',
 }
 
+SCHEMA = 't_p59085732_tree_inventory_map'
+
 def get_db():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
@@ -53,7 +55,6 @@ def handler(event: dict, context) -> dict:
         except Exception:
             pass
 
-    schema = os.environ.get('MAIN_DB_SCHEMA', 't_p59085732_tree_inventory_map')
     action = body.get('action', '')
     if not action:
         if path.endswith('/register'): action = 'register'
@@ -75,7 +76,7 @@ def handler(event: dict, context) -> dict:
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute(f'SELECT id FROM {schema}.users WHERE email = %s', (email,))
+        cur.execute(f'SELECT id FROM {SCHEMA}.users WHERE email = %s', (email,))
         if cur.fetchone():
             conn.close()
             return {'statusCode': 409, 'headers': CORS,
@@ -83,7 +84,7 @@ def handler(event: dict, context) -> dict:
 
         pw_hash = hash_password(password)
         cur.execute(
-            f'INSERT INTO {schema}.users (email, password_hash, name) VALUES (%s, %s, %s) RETURNING id',
+            f'INSERT INTO {SCHEMA}.users (email, password_hash, name) VALUES (%s, %s, %s) RETURNING id',
             (email, pw_hash, name)
         )
         user_id = cur.fetchone()[0]
@@ -107,7 +108,7 @@ def handler(event: dict, context) -> dict:
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            f'SELECT id, email, name, role FROM {schema}.users WHERE email = %s AND password_hash = %s',
+            f'SELECT id, email, name, role FROM {SCHEMA}.users WHERE email = %s AND password_hash = %s',
             (email, pw_hash)
         )
         row = cur.fetchone()
@@ -132,8 +133,7 @@ def handler(event: dict, context) -> dict:
 
         conn = get_db()
         cur = conn.cursor()
-        schema = os.environ.get('MAIN_DB_SCHEMA', 't_p59085732_tree_inventory_map')
-        cur.execute(f'SELECT id, email, name, role FROM {schema}.users WHERE id = %s', (info['id'],))
+        cur.execute(f'SELECT id, email, name, role FROM {SCHEMA}.users WHERE id = %s', (info['id'],))
         row = cur.fetchone()
         conn.close()
 
