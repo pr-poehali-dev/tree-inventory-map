@@ -92,6 +92,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
   const [measureMode, setMeasureMode] = useState<'distance' | 'area' | null>(null);
+  const [showCadastre, setShowCadastre] = useState(false);
+  const cadastreLayerRef = useRef<L.TileLayer.WMS | null>(null);
 
   const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
@@ -163,6 +165,33 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       labelsLayerRef.current = labels;
     }
   }, [activeLayer, tileOffset]);
+
+  // Кадастровый слой Росреестра
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (showCadastre) {
+      if (!cadastreLayerRef.current) {
+        cadastreLayerRef.current = L.tileLayer.wms(
+          'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/CadastreObjects/MapServer/WmsServer',
+          {
+            layers: '0,1,2,3,4,5,6,7,8,9,10',
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.1',
+            attribution: '© Росреестр',
+            opacity: 0.7,
+          } as L.WMSOptions
+        );
+      }
+      cadastreLayerRef.current.addTo(map);
+    } else {
+      if (cadastreLayerRef.current) {
+        map.removeLayer(cadastreLayerRef.current);
+      }
+    }
+  }, [showCadastre]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -285,6 +314,15 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           </div>
         )}
       </div>
+
+      {/* Cadastre toggle */}
+      <button
+        onClick={() => setShowCadastre(v => !v)}
+        className={`absolute top-28 right-4 z-[1000] flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
+          ${showCadastre ? 'bg-orange-500 text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
+      >
+        🏛 Кадастр
+      </button>
 
       {/* Layer switcher */}
       <div className="absolute top-16 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex">
