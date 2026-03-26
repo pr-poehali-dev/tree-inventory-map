@@ -7,6 +7,7 @@ import { TreeMarker } from '@/types/tree';
 // Добавляй опорные точки: { x, y, lat, lon } и функция пересчитается автоматически
 const _pts: { x: number; y: number; lat: number; lon: number }[] = [
   { x: 374197.241, y: 17688.403, lat: 53.68931, lon: 91.65086 }, // Сирень
+  { x: 373632.904, y: 22365.750, lat: 53.68502, lon: 91.72181 }, // Берёза
 ];
 
 function msk167toWGS84(x: number, y: number): [number, number] {
