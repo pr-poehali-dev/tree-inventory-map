@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,22 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl ?? '');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName(initialData?.name ?? '');
+      setSpecies(initialData?.species ?? SPECIES_GROUPS[0].items[0]);
+      setDiameter(String(initialData?.diameter ?? 20));
+      setHeight(String(initialData?.height ?? 8));
+      setCount(String(initialData?.count ?? 1));
+      setAge(String(initialData?.age ?? ''));
+      setStatus(initialData?.status ?? 'good');
+      setCondition(initialData?.condition ?? 'healthy');
+      setAddress(initialData?.address ?? '');
+      setDescription(initialData?.description ?? '');
+      setPhotoUrl(initialData?.photoUrl ?? '');
+    }
+  }, [open, initialData?.id]);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
