@@ -3,13 +3,8 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 → WGS84 через аффинное преобразование по опорным точкам (МНК)
-// Эталон: городокская X=378072.760, Y=20331.493 → 53.72458, 91.68978
-// В файле: первая колонка = X (отклонение от осевого ~20000), вторая = Y (северная ~378000)
-// Опорные точки для калибровки:
-const _calPts = [
-  { x: 378072.760, y: 20331.493, lat: 53.72458, lon: 91.68978 },
-];
+// МСК-167 → WGS84: опорные точки (добавляй пары: TXT координаты + координаты на карте)
+const _calPts: { x: number; y: number; lat: number; lon: number }[] = [];
 
 function msk167toWGS84(xMsk: number, yMsk: number): [number, number] {
   if (_calPts.length === 0) return [xMsk, yMsk];
