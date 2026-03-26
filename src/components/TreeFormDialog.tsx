@@ -10,9 +10,11 @@ import {
   TreeMarker,
   TreeStatus,
   TreeCondition,
+  TreeLifeStatus,
   SPECIES_GROUPS,
   STATUS_LABELS,
   CONDITION_LABELS,
+  LIFE_STATUS_LABELS,
 } from '@/types/tree';
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 
@@ -34,6 +36,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [age, setAge] = useState(String(initialData?.age ?? ''));
   const [status, setStatus] = useState<TreeStatus>(initialData?.status ?? 'good');
   const [condition, setCondition] = useState<TreeCondition>(initialData?.condition ?? 'healthy');
+  const [lifeStatus, setLifeStatus] = useState<TreeLifeStatus>(initialData?.lifeStatus ?? 'alive');
   const [address, setAddress] = useState(initialData?.address ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl ?? '');
@@ -49,6 +52,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
       setAge(String(initialData?.age ?? ''));
       setStatus(initialData?.status ?? 'good');
       setCondition(initialData?.condition ?? 'healthy');
+      setLifeStatus(initialData?.lifeStatus ?? 'alive');
       setAddress(initialData?.address ?? '');
       setDescription(initialData?.description ?? '');
       setPhotoUrl(initialData?.photoUrl ?? '');
@@ -76,6 +80,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
       age: age ? Number(age) : undefined,
       status,
       condition,
+      lifeStatus,
       address: address.trim(),
       description: description.trim(),
       photoUrl,
@@ -229,6 +234,30 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Life status */}
+          <div className="grid gap-1.5">
+            <Label>Жизненное состояние</Label>
+            <div className="flex gap-2">
+              {(Object.entries(LIFE_STATUS_LABELS) as [TreeLifeStatus, string][]).map(([k, v]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setLifeStatus(k)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all
+                    ${lifeStatus === k
+                      ? k === 'alive'
+                        ? 'bg-green-50 border-green-400 text-green-700'
+                        : 'bg-gray-100 border-gray-400 text-gray-700'
+                      : 'border-[var(--forest-light)]/40 text-[var(--stone)] hover:bg-[var(--forest-pale)]'
+                    }`}
+                >
+                  <span>{k === 'alive' ? '🌿' : '🪵'}</span>
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Condition */}

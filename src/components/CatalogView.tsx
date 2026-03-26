@@ -136,12 +136,17 @@ export default function CatalogView({
                     <div className="font-semibold text-[var(--forest-dark)] text-sm leading-tight">{tree.name}</div>
                     <div className="text-xs text-[var(--stone)] mt-0.5">{tree.species}</div>
                   </div>
-                  <Badge
-                    className="text-[10px] px-1.5 py-0.5 shrink-0 text-white border-0"
-                    style={{ background: STATUS_COLORS[tree.status] }}
-                  >
-                    {STATUS_LABELS[tree.status]}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge
+                      className="text-[10px] px-1.5 py-0.5 text-white border-0"
+                      style={{ background: STATUS_COLORS[tree.status] }}
+                    >
+                      {STATUS_LABELS[tree.status]}
+                    </Badge>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${tree.lifeStatus === 'cut' ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700'}`}>
+                      {tree.lifeStatus === 'cut' ? '🪵 Спиленное' : '🌿 Живое'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-[var(--stone)]">
