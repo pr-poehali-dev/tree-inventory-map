@@ -88,12 +88,87 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
+  const geoMarkerRef = useRef<L.Marker | null>(null);
+  const geoCircleRef = useRef<L.Circle | null>(null);
+  const geoWatchRef = useRef<number | null>(null);
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
   const [measureMode, setMeasureMode] = useState<'distance' | 'area' | null>(null);
+  const [geoActive, setGeoActive] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  const [geoFollow, setGeoFollow] = useState(false);
 
+
+  const geoIcon = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:18px;height:18px;
+      background:#2563eb;
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 0 0 4px rgba(37,99,235,0.25);
+    "></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+
+  const startGeo = () => {
+    if (!navigator.geolocation) { setGeoError('Геолокация не поддерживается браузером'); return; }
+    setGeoError('');
+    setGeoActive(true);
+    setGeoFollow(true);
+
+    geoWatchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        const map = mapRef.current;
+        if (!map) return;
+
+        if (!geoMarkerRef.current) {
+          geoMarkerRef.current = L.marker([lat, lng], { icon: geoIcon, zIndexOffset: 1000 }).addTo(map);
+        } else {
+          geoMarkerRef.current.setLatLng([lat, lng]);
+        }
+
+        if (!geoCircleRef.current) {
+          geoCircleRef.current = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#2563eb',
+            fillColor: '#2563eb',
+            fillOpacity: 0.1,
+            weight: 1,
+          }).addTo(map);
+        } else {
+          geoCircleRef.current.setLatLng([lat, lng]);
+          geoCircleRef.current.setRadius(accuracy);
+        }
+
+        if (geoFollow) {
+          map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: true });
+        }
+      },
+      (err) => {
+        if (err.code === 1) setGeoError('Доступ к геолокации запрещён');
+        else if (err.code === 2) setGeoError('Геолокация недоступна');
+        else setGeoError('Ошибка геолокации');
+        stopGeo();
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+    );
+  };
+
+  const stopGeo = () => {
+    if (geoWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(geoWatchRef.current);
+      geoWatchRef.current = null;
+    }
+    if (geoMarkerRef.current) { geoMarkerRef.current.remove(); geoMarkerRef.current = null; }
+    if (geoCircleRef.current) { geoCircleRef.current.remove(); geoCircleRef.current = null; }
+    setGeoActive(false);
+    setGeoFollow(false);
+  };
 
   const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
@@ -232,8 +307,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full rounded-xl overflow-hidden" />
 
-      {/* Add mode button — только для авторизованных */}
-      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
+      {/* Left controls */}
+      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2" style={{ maxWidth: 210 }}>
         {!isGuest && (
           <>
             <button
@@ -246,7 +321,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                 }
               `}
             >
-              <span>{addMode ? '📍' : '➕'}</span>
+              <span>{addMode ? '🖱' : '➕'}</span>
               {addMode ? 'Кликните на карту' : 'Добавить дерево'}
             </button>
             {addMode && (
@@ -258,6 +333,34 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
               </button>
             )}
           </>
+        )}
+
+        {/* Геолокация */}
+        <button
+          onClick={geoActive ? stopGeo : startGeo}
+          title={geoActive ? 'Выключить геолокацию' : 'Моё местоположение'}
+          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
+            ${geoActive
+              ? 'bg-blue-600 text-white ring-2 ring-blue-300'
+              : 'bg-white text-blue-600 hover:bg-blue-50'
+            }`}
+        >
+          <span>📍</span>
+          {geoActive ? 'Слежение вкл.' : 'Моя геопозиция'}
+        </button>
+        {geoActive && (
+          <button
+            onClick={() => setGeoFollow(f => !f)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
+              ${geoFollow ? 'bg-blue-100 text-blue-700' : 'bg-white/90 text-[var(--stone)]'}`}
+          >
+            🔒 {geoFollow ? 'Следить: вкл.' : 'Следить: выкл.'}
+          </button>
+        )}
+        {geoError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-xl shadow">
+            {geoError}
+          </div>
         )}
       </div>
 
