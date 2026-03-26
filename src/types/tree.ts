@@ -41,6 +41,7 @@ export const SPECIES_GROUPS: { group: string; icon: string; items: string[] }[] 
     group: 'Деревья хвойные',
     icon: '🌲',
     items: [
+      'Хвойное',
       'Ель обыкновенная',
       'Ель колючая (голубая)',
       'Сосна обыкновенная',
@@ -53,6 +54,7 @@ export const SPECIES_GROUPS: { group: string; icon: string; items: string[] }[] 
     group: 'Деревья лиственные',
     icon: '🌳',
     items: [
+      'Лиственное',
       'Берёза повислая',
       'Берёза пушистая',
       'Дуб черешчатый',
@@ -83,6 +85,7 @@ export const SPECIES_GROUPS: { group: string; icon: string; items: string[] }[] 
     group: 'Кустарники',
     icon: '🌿',
     items: [
+      'Кустарник',
       'Сирень обыкновенная',
       'Сирень венгерская',
       'Акация жёлтая (карагана)',
