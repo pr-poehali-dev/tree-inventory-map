@@ -40,6 +40,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [address, setAddress] = useState(initialData?.address ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl ?? '');
+  const [addressLoading, setAddressLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -53,9 +54,35 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
       setStatus(initialData?.status ?? 'good');
       setCondition(initialData?.condition ?? 'healthy');
       setLifeStatus(initialData?.lifeStatus ?? 'alive');
-      setAddress(initialData?.address ?? '');
       setDescription(initialData?.description ?? '');
       setPhotoUrl(initialData?.photoUrl ?? '');
+
+      const currentLat = lat ?? initialData?.lat;
+      const currentLng = lng ?? initialData?.lng;
+
+      if (initialData?.address) {
+        setAddress(initialData.address);
+      } else if (currentLat && currentLng && !initialData?.id) {
+        setAddress('');
+        setAddressLoading(true);
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${currentLat}&lon=${currentLng}&format=json&addressdetails=1&accept-language=ru`, {
+          headers: { 'User-Agent': 'tree-inventory-map/1.0' }
+        })
+          .then(r => r.json())
+          .then(data => {
+            const a = data.address || {};
+            const parts = [
+              a.road || a.pedestrian || a.path || a.footway,
+              a.house_number,
+            ].filter(Boolean);
+            if (parts.length > 0) setAddress(parts.join(', '));
+            else if (data.display_name) setAddress(data.display_name.split(',').slice(0, 2).join(',').trim());
+          })
+          .catch(() => {})
+          .finally(() => setAddressLoading(false));
+      } else {
+        setAddress(initialData?.address ?? '');
+      }
     }
   }, [open, initialData?.id]);
 
@@ -114,13 +141,23 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
           {/* Address */}
           <div className="grid gap-1.5">
             <Label htmlFor="address">Адрес расположения</Label>
-            <Input
-              id="address"
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              placeholder="ул. Ленина, 12 / Парк Победы"
-              className="border-[var(--forest-light)]/40 focus:border-[var(--forest-mid)]"
-            />
+            <div className="relative">
+              <Input
+                id="address"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="ул. Ленина, 12"
+                className="border-[var(--forest-light)]/40 focus:border-[var(--forest-mid)] pr-8"
+              />
+              {addressLoading && (
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                  <Icon name="Loader2" size={14} className="animate-spin text-[var(--stone)]" />
+                </div>
+              )}
+            </div>
+            {addressLoading && (
+              <p className="text-[10px] text-[var(--stone)]">Определяю адрес по координатам…</p>
+            )}
           </div>
 
           {/* Coordinates (read-only) */}
