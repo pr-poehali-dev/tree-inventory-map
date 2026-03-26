@@ -65,8 +65,10 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
       } else if (currentLat && currentLng && !initialData?.id) {
         setAddress('');
         setAddressLoading(true);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
         fetch(`https://nominatim.openstreetmap.org/reverse?lat=${currentLat}&lon=${currentLng}&format=json&addressdetails=1&accept-language=ru`, {
-          headers: { 'User-Agent': 'tree-inventory-map/1.0' }
+          signal: controller.signal,
         })
           .then(r => r.json())
           .then(data => {
@@ -79,12 +81,12 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
             else if (data.display_name) setAddress(data.display_name.split(',').slice(0, 2).join(',').trim());
           })
           .catch(() => {})
-          .finally(() => setAddressLoading(false));
+          .finally(() => { clearTimeout(timer); setAddressLoading(false); });
       } else {
         setAddress(initialData?.address ?? '');
       }
     }
-  }, [open, initialData?.id]);
+  }, [open, initialData?.id, lat, lng]);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
