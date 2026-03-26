@@ -95,6 +95,33 @@ export default function HelpView() {
         </div>
       ))}
 
+      {/* Contacts */}
+      <div className="bg-white rounded-xl border border-[var(--border)] p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-[var(--forest-pale)] rounded-lg flex items-center justify-center">
+            <Icon name="Building2" size={16} className="text-[var(--forest-mid)]" />
+          </div>
+          <div className="font-semibold text-[var(--forest-dark)] font-heading text-sm">Контакты</div>
+        </div>
+        <div className="space-y-3 text-xs text-[var(--stone)]">
+          <div>
+            <div className="font-semibold text-[var(--forest-dark)] text-sm mb-0.5">ООО «Земли Города»</div>
+          </div>
+          <div className="flex gap-2">
+            <Icon name="MapPin" size={14} className="text-[var(--forest-mid)] shrink-0 mt-0.5" />
+            <span>662608, Красноярский край, Минусинский р-н, г. Минусинск, ул. Гоголя, зд. 63</span>
+          </div>
+          <div className="flex gap-2">
+            <Icon name="Phone" size={14} className="text-[var(--forest-mid)] shrink-0 mt-0.5" />
+            <a href="tel:+73913241531" className="hover:text-[var(--forest-mid)] transition-colors">+7 (39132) 4–15–31</a>
+          </div>
+          <div className="border-t border-[var(--border)] pt-3 flex gap-2">
+            <Icon name="Code" size={14} className="text-[var(--stone)] shrink-0 mt-0.5" />
+            <span>Разработал Вавилов Р.В.</span>
+          </div>
+        </div>
+      </div>
+
       {/* Fields reference */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">
         <div className="font-semibold text-[var(--forest-dark)] font-heading text-sm mb-3 flex items-center gap-2">
