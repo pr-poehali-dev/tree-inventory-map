@@ -1,7 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
+
+const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
+  '542': { name: 'Дерево лиственное', species: 'Лиственное дерево', condition: 'healthy' },
+  '543': { name: 'Дерево хвойное', species: 'Хвойное дерево', condition: 'healthy' },
+  '560': { name: 'Кустарник', species: 'Кустарник', condition: 'healthy' },
+};
 
 interface Props {
   trees: TreeMarker[];
@@ -11,6 +17,8 @@ interface Props {
 export default function ImportExportView({ trees, onImport }: Props) {
   const kmlRef = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
+  const txtRef = useRef<HTMLInputElement>(null);
+  const [txtPreview, setTxtPreview] = useState<{ ok: number; skip: number; rows: string[] } | null>(null);
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(trees, null, 2)], { type: 'application/json' });
@@ -83,6 +91,59 @@ export default function ImportExportView({ trees, onImport }: Props) {
       } catch (err) { console.error('Import failed', err); }
     };
     reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportTXT = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const imported: TreeMarker[] = [];
+      const skipped: string[] = [];
+
+      lines.forEach((line, i) => {
+        const parts = line.split(/[\t,;]+/).map(p => p.trim());
+        if (parts.length < 4) {
+          skipped.push(`Строка ${i + 1}: недостаточно полей («${line.slice(0, 40)}»)`);
+          return;
+        }
+        const [rawName, rawX, rawY, rawCode] = parts;
+        const lat = parseFloat(rawX.replace(',', '.'));
+        const lng = parseFloat(rawY.replace(',', '.'));
+        const code = rawCode?.trim();
+        if (isNaN(lat) || isNaN(lng)) {
+          skipped.push(`Строка ${i + 1}: некорректные координаты («${line.slice(0, 40)}»)`);
+          return;
+        }
+        const treeInfo = TREE_CODE_MAP[code] ?? {
+          name: rawName || `Объект ${i + 1}`,
+          species: 'Не определено',
+          condition: 'healthy' as TreeMarker['condition'],
+        };
+        imported.push({
+          id: `txt_${Date.now()}_${i}`,
+          lat,
+          lng,
+          name: rawName || treeInfo.name,
+          species: treeInfo.species,
+          diameter: 20,
+          height: 10,
+          count: 1,
+          status: 'good',
+          condition: treeInfo.condition,
+          description: code ? `Код объекта: ${code}` : undefined,
+          createdAt: new Date().toISOString().split('T')[0],
+          updatedAt: new Date().toISOString().split('T')[0],
+        });
+      });
+
+      setTxtPreview({ ok: imported.length, skip: skipped.length, rows: skipped });
+      if (imported.length > 0) onImport(imported);
+    };
+    reader.readAsText(file, 'utf-8');
     e.target.value = '';
   };
 
@@ -179,6 +240,14 @@ export default function ImportExportView({ trees, onImport }: Props) {
 
         <div className="space-y-2">
           <button
+            onClick={() => txtRef.current?.click()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-purple-200 hover:border-purple-400 hover:bg-purple-50/30 transition-all text-sm text-[var(--forest-dark)] font-medium"
+          >
+            <Icon name="FileText" size={16} className="text-purple-500" />
+            Загрузить TXT файл (коды объектов)
+          </button>
+
+          <button
             onClick={() => kmlRef.current?.click()}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-[var(--forest-light)]/40 hover:border-[var(--forest-mid)] hover:bg-[var(--forest-pale)]/30 transition-all text-sm text-[var(--forest-dark)] font-medium"
           >
@@ -195,10 +264,35 @@ export default function ImportExportView({ trees, onImport }: Props) {
           </button>
         </div>
 
+        <input ref={txtRef} type="file" accept=".txt" className="hidden" onChange={handleImportTXT} />
         <input ref={kmlRef} type="file" accept=".kml" className="hidden" onChange={handleImportKML} />
         <input ref={jsonRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
 
-        <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+        {txtPreview && (
+          <div className={`mt-3 p-3 rounded-lg border text-xs ${txtPreview.ok > 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <div className={`flex items-center gap-2 font-medium mb-1 ${txtPreview.ok > 0 ? 'text-green-700' : 'text-red-700'}`}>
+              <Icon name={txtPreview.ok > 0 ? 'CheckCircle' : 'XCircle'} size={13} />
+              Загружено {txtPreview.ok} объектов{txtPreview.skip > 0 ? `, пропущено ${txtPreview.skip}` : ''}
+            </div>
+            {txtPreview.rows.length > 0 && (
+              <ul className="text-red-600 space-y-0.5 mt-1">
+                {txtPreview.rows.map((r, i) => <li key={i}>• {r}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="text-xs text-purple-700 flex gap-2">
+            <Icon name="Info" size={14} className="shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium mb-0.5">Формат TXT: имя, X, Y, код</div>
+              <div className="text-purple-600">542 — лиственные · 543 — хвойные · 560 — кустарники</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
           <div className="text-xs text-amber-700 flex gap-2">
             <Icon name="Info" size={14} className="shrink-0 mt-0.5" />
             <span>При импорте KML объектам будет присвоена порода «Берёза» по умолчанию. После импорта отредактируйте данные в каталоге.</span>
