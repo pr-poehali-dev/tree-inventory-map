@@ -3,44 +3,47 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 → WGS84: аффинное преобразование по 4 опорным точкам (МНК)
-// P1 Сосна:  X=376469.980, Y=20721.343 → lat=53.71025, lon=91.69611
-// P2 Тополь: X=375516.198, Y=19202.592 → lat=53.70008, lon=91.67246
-// P3 Берёза: X=373632.904, Y=22365.750 → lat=53.68502, lon=91.72181
-// P4 Сирень: X=374197.241, Y=17688.403 → lat=53.68932, lon=91.65086
-// lat = a0 + a1*X + a2*Y,  lon = b0 + b1*X + b2*Y  (МНК по 4 точкам)
-const _pts = [
-  { x: 376469.980, y: 20721.343, lat: 53.71025, lon: 91.69611 },
-  { x: 375516.198, y: 19202.592, lat: 53.70008, lon: 91.67246 },
-  { x: 373632.904, y: 22365.750, lat: 53.68502, lon: 91.72181 },
-  { x: 374197.241, y: 17688.403, lat: 53.68932, lon: 91.65086 },
-];
-function _lsq(pts: typeof _pts, z: 'lat' | 'lon') {
-  const n = pts.length;
-  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0, sxz = 0, syz = 0, sz = 0;
-  for (const p of pts) {
-    sx += p.x; sy += p.y; sx2 += p.x * p.x; sy2 += p.y * p.y;
-    sxy += p.x * p.y; sxz += p.x * p[z]; syz += p.y * p[z]; sz += p[z];
+// МСК-167 → WGS84: калибровка не задана
+// Добавляй опорные точки: { x, y, lat, lon } и функция пересчитается автоматически
+const _pts: { x: number; y: number; lat: number; lon: number }[] = [];
+
+function msk167toWGS84(x: number, y: number): [number, number] {
+  // Нет опорных точек — возвращаем как есть (импорт невозможен без калибровки)
+  if (_pts.length === 0) return [x, y];
+  // 1 точка — только сдвиг
+  if (_pts.length === 1) {
+    const p = _pts[0];
+    return [p.lat + (x - p.x) * 0.000009, p.lon + (y - p.y) * 0.000015];
   }
-  // Нормальные уравнения МНК: [n, sx, sy; sx, sx2, sxy; sy, sxy, sy2] * [a0,a1,a2] = [sz, sxz, syz]
-  const A = [[n, sx, sy], [sx, sx2, sxy], [sy, sxy, sy2]];
-  const b = [sz, sxz, syz];
-  // Решение методом Крамера 3x3
+  // 2 точки — линейный масштаб по осям
+  if (_pts.length === 2) {
+    const [p1, p2] = _pts;
+    const kLat = (p2.lat - p1.lat) / (p2.x - p1.x);
+    const kLon = (p2.lon - p1.lon) / (p2.y - p1.y);
+    return [p1.lat + (x - p1.x) * kLat, p1.lon + (y - p1.y) * kLon];
+  }
+  // 3+ точек — МНК аффинное преобразование
+  const n = _pts.length;
+  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0;
+  let sxLat = 0, syLat = 0, sLat = 0;
+  let sxLon = 0, syLon = 0, sLon = 0;
+  for (const p of _pts) {
+    sx += p.x; sy += p.y; sx2 += p.x*p.x; sy2 += p.y*p.y; sxy += p.x*p.y;
+    sxLat += p.x*p.lat; syLat += p.y*p.lat; sLat += p.lat;
+    sxLon += p.x*p.lon; syLon += p.y*p.lon; sLon += p.lon;
+  }
+  const A = [[n,sx,sy],[sx,sx2,sxy],[sy,sxy,sy2]];
   const det = (m: number[][]) =>
     m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
    -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
    +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
   const D = det(A);
-  const repl = (col: number) => A.map((row, i) => row.map((v, j) => j === col ? b[i] : v));
-  return [det(repl(0))/D, det(repl(1))/D, det(repl(2))/D];
-}
-const _cLat = _lsq(_pts, 'lat');
-const _cLon = _lsq(_pts, 'lon');
-
-function msk167toWGS84(x: number, y: number): [number, number] {
-  const lat = _cLat[0] + _cLat[1] * x + _cLat[2] * y;
-  const lon = _cLon[0] + _cLon[1] * x + _cLon[2] * y;
-  return [lat, lon];
+  const repl = (col: number, b: number[]) => A.map((row,i) => row.map((v,j) => j===col ? b[i] : v));
+  const bLat = [sLat, sxLat, syLat];
+  const bLon = [sLon, sxLon, syLon];
+  const [a0,a1,a2] = [0,1,2].map(i => det(repl(i,bLat))/D);
+  const [b0,b1,b2] = [0,1,2].map(i => det(repl(i,bLon))/D);
+  return [a0+a1*x+a2*y, b0+b1*x+b2*y];
 }
 
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
