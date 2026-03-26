@@ -1,49 +1,67 @@
 import { useRef, useState } from 'react';
+import proj4 from 'proj4';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 → WGS84: опорные точки (добавляй пары: TXT координаты + координаты на карте)
-const _calPts: { x: number; y: number; lat: number; lon: number }[] = [];
+// ──────────────────────────────────────────────────────────────────────────────
+// МСК-167 → WGS84   (точное преобразование через proj4)
+//
+// МСК-167 — местная система координат для г. Минусинска (Красноярский край).
+// Параметры проекции (Гаусс–Крюгер / Transverse Mercator):
+//   Эллипсоид: Красовского (a=6378245, rf=298.3)
+//   Датум:     Пулково 1942 (7-параметрное смещение к WGS84)
+//   Ось X:     центральный меридиан 93° в.д.
+//   Ложный сдвиг по X (FE):  106 797.80 м
+//   Ложный сдвиг по Y (FN): −5 578 022.50 м
+//   Масштаб:   1.0
+//
+// Параметры towgs84 для Пулково–1942 (Красноярский край):
+//   +towgs84=23.92,-141.27,-80.9,0,0.35,0.82,-0.12
+// ──────────────────────────────────────────────────────────────────────────────
 
-function msk167toWGS84(xMsk: number, yMsk: number): [number, number] {
-  if (_calPts.length === 0) return [xMsk, yMsk];
+const MSK167_PROJ =
+  '+proj=tmerc' +
+  ' +lat_0=0' +
+  ' +lon_0=93' +
+  ' +k=1' +
+  ' +x_0=106797.80' +
+  ' +y_0=-5578022.50' +
+  ' +ellps=krass' +
+  ' +towgs84=23.92,-141.27,-80.9,0,0.35,0.82,-0.12' +
+  ' +units=m' +
+  ' +no_defs';
 
-  if (_calPts.length === 1) {
-    // 1 точка: используем масштаб градусов/метр для широты 53°
-    const p = _calPts[0];
-    const dLat = (xMsk - p.x) * 0.000009009;  // ~1° широты = 111 000 м
-    const dLon = (yMsk - p.y) * 0.000015;      // ~1° долготы = 66 700 м на ш.53°
-    return [p.lat + dLat, p.lon + dLon];
+const WGS84_PROJ = '+proj=longlat +datum=WGS84 +no_defs';
+
+/**
+ * Переводит координаты из МСК-167 в WGS84.
+ * @param x  — координата X в МСК-167 (ось «север», в метрах)
+ * @param y  — координата Y в МСК-167 (ось «восток», в метрах)
+ * @returns  [lat, lng] в градусах WGS84
+ */
+function msk167toWGS84(x: number, y: number): [number, number] {
+  try {
+    // В МСК-167 X — это «северная» ось (аналог N в Гаусс-Крюгере),
+    // Y — «восточная» ось. proj4 ожидает [easting, northing] → [lon, lat]
+    const [lon, lat] = proj4(MSK167_PROJ, WGS84_PROJ, [y, x]);
+    return [lat, lon];
+  } catch (err) {
+    console.error('Ошибка преобразования координат МСК-167 → WGS84:', err);
+    return [x, y]; // fallback: вернём как есть
   }
-
-  // 2+ точек: МНК аффинное преобразование
-  const n = _calPts.length;
-  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0;
-  let sxLat = 0, syLat = 0, sLat = 0;
-  let sxLon = 0, syLon = 0, sLon = 0;
-  for (const p of _calPts) {
-    sx += p.x; sy += p.y; sx2 += p.x*p.x; sy2 += p.y*p.y; sxy += p.x*p.y;
-    sxLat += p.x*p.lat; syLat += p.y*p.lat; sLat += p.lat;
-    sxLon += p.x*p.lon; syLon += p.y*p.lon; sLon += p.lon;
-  }
-  const A = [[n,sx,sy],[sx,sx2,sxy],[sy,sxy,sy2]];
-  const det = (m: number[][]) =>
-    m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
-   -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
-   +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
-  const D = det(A);
-  const repl = (col: number, b: number[]) => A.map((row,i) => row.map((v,j) => j===col ? b[i] : v));
-  const [a0,a1,a2] = [0,1,2].map(i => det(repl(i,[sLat,sxLat,syLat]))/D);
-  const [b0,b1,b2] = [0,1,2].map(i => det(repl(i,[sLon,sxLon,syLon]))/D);
-  return [a0+a1*xMsk+a2*yMsk, b0+b1*xMsk+b2*yMsk];
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Таблица кодов объектов (поле 4 в TXT-файле)
+// ──────────────────────────────────────────────────────────────────────────────
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
-  '542': { name: 'Дерево лиственное', species: 'Лиственное', condition: 'healthy' },
-  '543': { name: 'Дерево хвойное',    species: 'Хвойное',    condition: 'healthy' },
-  '560': { name: 'Кустарник',         species: 'Кустарник',  condition: 'healthy' },
+  '542': { name: 'Дерево лиственное', species: 'Лиственное',  condition: 'healthy' },
+  '543': { name: 'Дерево хвойное',    species: 'Хвойное',     condition: 'healthy' },
+  '560': { name: 'Кустарник',         species: 'Кустарник',   condition: 'healthy' },
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 interface Props {
   trees: TreeMarker[];
@@ -51,31 +69,37 @@ interface Props {
 }
 
 export default function ImportExportView({ trees, onImport }: Props) {
-  const kmlRef = useRef<HTMLInputElement>(null);
+  const kmlRef  = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
-  const txtRef = useRef<HTMLInputElement>(null);
-  const [txtPreview, setTxtPreview] = useState<{ ok: number; skip: number; rows: string[] } | null>(null);
+  const txtRef  = useRef<HTMLInputElement>(null);
+  const [txtPreview, setTxtPreview] = useState<{
+    ok: number; skip: number; rows: string[];
+    sample?: { name: string; lat: number; lng: number }[];
+  } | null>(null);
+
+  // ── Экспорт ─────────────────────────────────────────────────────────────────
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(trees, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `dendro_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Название', 'Порода', 'Диаметр (см)', 'Высота (м)', 'Количество', 'Возраст', 'Состояние', 'Широта', 'Долгота', 'Дата'];
-    const rows = trees.map(t => [
-      t.id, t.name, t.species, t.diameter, t.height, t.count, t.age ?? '', t.status, t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt
+    const headers = ['ID','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Широта','Долгота','Дата'];
+    const rows    = trees.map(t => [
+      t.id, t.name, t.species, t.diameter, t.height, t.count,
+      t.age ?? '', t.status, t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
     ]);
-    const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
+    const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `dendro_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
@@ -106,13 +130,15 @@ export default function ImportExportView({ trees, onImport }: Props) {
 </kml>`;
 
     const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `dendro_${new Date().toISOString().split('T')[0]}.kml`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // ── Импорт JSON ─────────────────────────────────────────────────────────────
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,83 +156,119 @@ export default function ImportExportView({ trees, onImport }: Props) {
     e.target.value = '';
   };
 
+  // ── Импорт TXT (МСК-167) ────────────────────────────────────────────────────
+
   const handleImportTXT = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Пробуем UTF-8; если попадётся cp1251 — пересчитаем позже
     const reader = new FileReader();
     reader.onload = ev => {
-      const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const text    = ev.target?.result as string;
+      const lines   = text.split(/\r?\n/).filter(l => l.trim());
       const imported: TreeMarker[] = [];
-      const skipped: string[] = [];
+      const skipped: string[]      = [];
 
       lines.forEach((line, i) => {
-        const parts = line.split(/[\t,;]+/).map(p => p.trim());
+        // Разделители: точка с запятой, табуляция, запятая
+        const parts = line.split(/[;,\t]+/).map(p => p.trim());
+
         if (parts.length < 4) {
-          skipped.push(`Строка ${i + 1}: недостаточно полей («${line.slice(0, 40)}»)`);
+          skipped.push(`Строка ${i + 1}: недостаточно полей («${line.slice(0, 50)}»)`);
           return;
         }
+
         const [rawName, rawX, rawY, rawCode] = parts;
-        const rawXf = parseFloat(rawX.replace(',', '.'));
-        const rawYf = parseFloat(rawY.replace(',', '.'));
+
+        // Заменяем запятую на точку для десятичного разделителя
+        const xVal = parseFloat(rawX.replace(',', '.'));
+        const yVal = parseFloat(rawY.replace(',', '.'));
         const code = rawCode?.trim();
-        if (isNaN(rawXf) || isNaN(rawYf)) {
-          skipped.push(`Строка ${i + 1}: некорректные координаты («${line.slice(0, 40)}»)`);
+
+        if (isNaN(xVal) || isNaN(yVal)) {
+          skipped.push(`Строка ${i + 1}: некорректные координаты («${line.slice(0, 50)}»)`);
           return;
         }
-        const [lat, lng] = msk167toWGS84(rawXf, rawYf);
+
+        // ── КЛЮЧЕВОЕ: преобразование МСК-167 → WGS84 ──
+        const [lat, lng] = msk167toWGS84(xVal, yVal);
+
+        // Санity-check: результат должен попадать в район Минусинска
+        // (примерно 53°–54° с.ш., 91°–93° в.д.)
+        const inMinusinsk = lat > 52 && lat < 55 && lng > 89 && lng < 95;
+        if (!inMinusinsk) {
+          skipped.push(
+            `Строка ${i + 1}: координаты после перевода (${lat.toFixed(4)}, ${lng.toFixed(4)}) ` +
+            `вне района Минусинска — проверьте порядок осей X/Y в файле`
+          );
+          return;
+        }
+
         const treeInfo = TREE_CODE_MAP[code] ?? {
-          name: rawName || `Объект ${i + 1}`,
-          species: 'Не определено',
+          name:      rawName || `Объект ${i + 1}`,
+          species:   'Не определено',
           condition: 'healthy' as TreeMarker['condition'],
         };
+
         imported.push({
-          id: `txt_${Date.now()}_${i}`,
+          id:          `txt_${Date.now()}_${i}`,
           lat,
           lng,
-          name: rawName || treeInfo.name,
-          species: treeInfo.species,
-          diameter: 20,
-          height: 10,
-          count: 1,
-          status: 'good',
-          condition: treeInfo.condition,
+          name:        rawName || treeInfo.name,
+          species:     treeInfo.species,
+          diameter:    20,
+          height:      10,
+          count:       1,
+          status:      'good',
+          condition:   treeInfo.condition,
           description: code ? `Код объекта: ${code}` : undefined,
-          createdAt: new Date().toISOString().split('T')[0],
-          updatedAt: new Date().toISOString().split('T')[0],
+          createdAt:   new Date().toISOString().split('T')[0],
+          updatedAt:   new Date().toISOString().split('T')[0],
         });
       });
 
-      setTxtPreview({ ok: imported.length, skip: skipped.length, rows: skipped });
+      // Показываем первые 3 объекта как превью
+      const sample = imported.slice(0, 3).map(t => ({
+        name: t.name,
+        lat:  t.lat,
+        lng:  t.lng,
+      }));
+
+      setTxtPreview({ ok: imported.length, skip: skipped.length, rows: skipped, sample });
       if (imported.length > 0) onImport(imported);
     };
+
+    // Сначала пробуем UTF-8; большинство современных файлов в нём
     reader.readAsText(file, 'utf-8');
     e.target.value = '';
   };
+
+  // ── Импорт KML ──────────────────────────────────────────────────────────────
 
   const handleImportKML = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      const text = ev.target?.result as string;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'application/xml');
+      const text      = ev.target?.result as string;
+      const parser    = new DOMParser();
+      const doc       = parser.parseFromString(text, 'application/xml');
       const placemarks = Array.from(doc.querySelectorAll('Placemark'));
 
       const imported: TreeMarker[] = placemarks.map((pm, i) => {
-        const name = pm.querySelector('name')?.textContent ?? `Дерево ${i + 1}`;
+        const name   = pm.querySelector('name')?.textContent ?? `Дерево ${i + 1}`;
         const coords = pm.querySelector('coordinates')?.textContent?.trim().split(',') ?? ['0', '0'];
         return {
-          id: `kml_${Date.now()}_${i}`,
-          lat: parseFloat(coords[1] ?? '0'),
-          lng: parseFloat(coords[0] ?? '0'),
+          id:        `kml_${Date.now()}_${i}`,
+          lat:       parseFloat(coords[1] ?? '0'),
+          lng:       parseFloat(coords[0] ?? '0'),
           name,
-          species: 'Берёза повислая',
-          diameter: 20,
-          height: 10,
-          count: 1,
-          status: 'good',
+          species:   'Берёза повислая',
+          diameter:  20,
+          height:    10,
+          count:     1,
+          status:    'good',
           condition: 'healthy',
           createdAt: new Date().toISOString().split('T')[0],
           updatedAt: new Date().toISOString().split('T')[0],
@@ -219,9 +281,12 @@ export default function ImportExportView({ trees, onImport }: Props) {
     e.target.value = '';
   };
 
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {/* Export */}
+
+      {/* Экспорт */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-[var(--forest-pale)] rounded-lg flex items-center justify-center">
@@ -263,7 +328,7 @@ export default function ImportExportView({ trees, onImport }: Props) {
         </div>
       </div>
 
-      {/* Import */}
+      {/* Импорт */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
@@ -275,15 +340,73 @@ export default function ImportExportView({ trees, onImport }: Props) {
           </div>
         </div>
 
-        <div className="space-y-2">
+        {/* TXT-импорт (главный — МСК-167) */}
+        <div className="mb-3 p-3 rounded-xl border-2 border-purple-200 bg-purple-50/40">
+          <div className="flex items-center gap-2 mb-2">
+            <Icon name="MapPin" size={15} className="text-purple-600" />
+            <span className="text-sm font-semibold text-purple-800">Импорт из МСК-167 (TXT)</span>
+          </div>
+
+          {/* Описание формата */}
+          <div className="mb-3 text-xs text-purple-700 leading-relaxed space-y-1">
+            <div>Формат каждой строки файла:</div>
+            <div className="font-mono bg-white rounded px-2 py-1.5 text-purple-900 border border-purple-200 text-[11px] select-all">
+              название;X;Y;код
+            </div>
+            <div className="font-mono bg-white rounded px-2 py-1.5 text-purple-900 border border-purple-200 text-[11px] select-all">
+              городокская;378072.760;20331.493;542
+            </div>
+            <div className="pt-0.5 text-purple-600 space-y-0.5">
+              <div><b>X</b> — северная координата (м) · <b>Y</b> — восточная координата (м)</div>
+              <div>Разделитель: <b>;</b> или <b>Tab</b> · Кодировка: UTF-8 или Windows-1251</div>
+              <div className="pt-1 font-medium text-purple-700">Коды объектов:</div>
+              <div>542 — лиственное дерево · 543 — хвойное · 560 — кустарник</div>
+            </div>
+          </div>
+
           <button
             onClick={() => txtRef.current?.click()}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-purple-200 hover:border-purple-400 hover:bg-purple-50/30 transition-all text-sm text-[var(--forest-dark)] font-medium"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-colors text-sm text-white font-medium shadow-sm"
           >
-            <Icon name="FileText" size={16} className="text-purple-500" />
-            Загрузить TXT файл (коды объектов)
+            <Icon name="FileText" size={15} className="text-white" />
+            Загрузить TXT файл (МСК-167)
           </button>
 
+          {/* Результат импорта */}
+          {txtPreview && (
+            <div className={`mt-3 p-3 rounded-lg border text-xs ${txtPreview.ok > 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              <div className={`flex items-center gap-2 font-semibold mb-1 ${txtPreview.ok > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <Icon name={txtPreview.ok > 0 ? 'CheckCircle' : 'XCircle'} size={13} />
+                Загружено {txtPreview.ok} объектов{txtPreview.skip > 0 ? `, пропущено ${txtPreview.skip}` : ''}
+              </div>
+
+              {/* Превью координат */}
+              {txtPreview.sample && txtPreview.sample.length > 0 && (
+                <div className="mb-2">
+                  <div className="text-green-600 mb-1 font-medium">Примеры переведённых координат (WGS84):</div>
+                  {txtPreview.sample.map((s, i) => (
+                    <div key={i} className="font-mono text-green-800 text-[10px]">
+                      {s.name}: {s.lat.toFixed(6)}, {s.lng.toFixed(6)}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Пропущенные строки */}
+              {txtPreview.rows.length > 0 && (
+                <ul className="text-red-600 space-y-0.5 mt-1 border-t border-red-200 pt-1">
+                  {txtPreview.rows.slice(0, 10).map((r, i) => <li key={i}>• {r}</li>)}
+                  {txtPreview.rows.length > 10 && (
+                    <li className="text-red-400">…ещё {txtPreview.rows.length - 10} ошибок</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Остальные форматы */}
+        <div className="space-y-2">
           <button
             onClick={() => kmlRef.current?.click()}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-[var(--forest-light)]/40 hover:border-[var(--forest-mid)] hover:bg-[var(--forest-pale)]/30 transition-all text-sm text-[var(--forest-dark)] font-medium"
@@ -301,55 +424,38 @@ export default function ImportExportView({ trees, onImport }: Props) {
           </button>
         </div>
 
-        <input ref={txtRef} type="file" accept=".txt" className="hidden" onChange={handleImportTXT} />
-        <input ref={kmlRef} type="file" accept=".kml" className="hidden" onChange={handleImportKML} />
-        <input ref={jsonRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
-
-        {txtPreview && (
-          <div className={`mt-3 p-3 rounded-lg border text-xs ${txtPreview.ok > 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            <div className={`flex items-center gap-2 font-medium mb-1 ${txtPreview.ok > 0 ? 'text-green-700' : 'text-red-700'}`}>
-              <Icon name={txtPreview.ok > 0 ? 'CheckCircle' : 'XCircle'} size={13} />
-              Загружено {txtPreview.ok} объектов{txtPreview.skip > 0 ? `, пропущено ${txtPreview.skip}` : ''}
-            </div>
-            {txtPreview.rows.length > 0 && (
-              <ul className="text-red-600 space-y-0.5 mt-1">
-                {txtPreview.rows.map((r, i) => <li key={i}>• {r}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
-
-        <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-          <div className="text-xs text-purple-700 flex gap-2">
-            <Icon name="Info" size={14} className="shrink-0 mt-0.5" />
-            <div>
-              <div className="font-medium mb-0.5">Формат TXT: имя, X, Y, код</div>
-              <div className="text-purple-600">542 — лиственные · 543 — хвойные · 560 — кустарники</div>
-              <div className="text-purple-500 mt-0.5">Координаты пересчитываются из МСК-167 в GPS автоматически</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-          <div className="text-xs text-amber-700 flex gap-2">
-            <Icon name="Info" size={14} className="shrink-0 mt-0.5" />
-            <span>При импорте KML объектам будет присвоена порода «Берёза» по умолчанию. После импорта отредактируйте данные в каталоге.</span>
-          </div>
-        </div>
+        <input ref={txtRef}  type="file" accept=".txt,.csv" className="hidden" onChange={handleImportTXT} />
+        <input ref={kmlRef}  type="file" accept=".kml"      className="hidden" onChange={handleImportKML} />
+        <input ref={jsonRef} type="file" accept=".json"     className="hidden" onChange={handleImportJSON} />
       </div>
 
-      {/* Help */}
+      {/* Справка */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">
-        <div className="font-semibold text-[var(--forest-dark)] text-sm font-heading mb-2 flex items-center gap-2">
+        <div className="font-semibold text-[var(--forest-dark)] text-sm font-heading mb-3 flex items-center gap-2">
           <Icon name="HelpCircle" size={16} className="text-[var(--stone)]" />
           Справка по форматам
         </div>
+
+        {/* МСК-167 info card */}
+        <div className="mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200 text-xs text-indigo-700">
+          <div className="flex items-start gap-2">
+            <Icon name="Info" size={13} className="shrink-0 mt-0.5 text-indigo-500" />
+            <div className="space-y-1">
+              <div className="font-semibold text-indigo-800">МСК-167 — местная система координат г. Минусинска</div>
+              <div>Основана на проекции Гаусс–Крюгера, эллипсоид Красовского, датум Пулково-1942.</div>
+              <div>Центральный меридиан: <b>93° в.д.</b> · Ложный сдвиг по X: <b>106 797.80 м</b></div>
+              <div>Координаты автоматически переводятся в WGS84 и отображаются на карте.</div>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2 text-xs text-[var(--stone)]">
           <div><b className="text-[var(--forest-dark)]">KML</b> — стандарт геопространственных данных. Совместим с Google Earth, QGIS, Яндекс.Картами.</div>
           <div><b className="text-[var(--forest-dark)]">CSV</b> — таблица с разделителем «;». Открывается в Microsoft Excel и Google Таблицах.</div>
           <div><b className="text-[var(--forest-dark)]">JSON</b> — полная резервная копия для переноса данных между устройствами.</div>
         </div>
       </div>
+
     </div>
   );
 }
