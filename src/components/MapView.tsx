@@ -51,16 +51,17 @@ function getLabelsLayer(): L.TileLayer {
   );
 }
 
-function getTreeEmoji(species: string): string {
+function getTreeEmoji(species: string, lifeStatus?: string): string {
+  if (lifeStatus === 'cut') return '🪵';
   const s = species.toLowerCase();
   if (s.includes('кустарник') || s === 'кустарник') return '🌿';
   if (s.includes('хвойное') || s.includes('ель') || s.includes('сосна') || s.includes('лиственниц') || s.includes('пихта') || s.includes('кедр')) return '🌲';
   return '🌳';
 }
 
-function createTreeIcon(status: TreeMarker['status'], species: string) {
-  const color = STATUS_COLORS[status];
-  const emoji = getTreeEmoji(species);
+function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatus?: string) {
+  const color = lifeStatus === 'cut' ? '#8b8b8b' : STATUS_COLORS[status];
+  const emoji = getTreeEmoji(species, lifeStatus);
   return L.divIcon({
     className: '',
     html: `
@@ -281,9 +282,9 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       const existing = markersRef.current.get(tree.id);
       if (existing) {
         existing.setLatLng([tree.lat, tree.lng]);
-        existing.setIcon(createTreeIcon(tree.status, tree.species));
+        existing.setIcon(createTreeIcon(tree.status, tree.species, tree.lifeStatus));
       } else {
-        const marker = L.marker([tree.lat, tree.lng], { icon: createTreeIcon(tree.status, tree.species) });
+        const marker = L.marker([tree.lat, tree.lng], { icon: createTreeIcon(tree.status, tree.species, tree.lifeStatus) });
         const popupDiv = document.createElement('div');
         const root = createRoot(popupDiv);
         root.render(

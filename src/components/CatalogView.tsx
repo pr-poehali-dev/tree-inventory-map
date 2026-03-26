@@ -125,8 +125,9 @@ export default function CatalogView({
                   className="w-16 h-16 object-cover rounded-lg shrink-0"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-lg bg-[var(--forest-pale)] flex items-center justify-center shrink-0 text-2xl">
-                  {tree.species.toLowerCase().includes('кустарник') ? '🌿'
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 text-2xl ${tree.lifeStatus === 'cut' ? 'bg-gray-100' : 'bg-[var(--forest-pale)]'}`}>
+                  {tree.lifeStatus === 'cut' ? '🪵'
+                    : tree.species.toLowerCase().includes('кустарник') ? '🌿'
                     : (tree.species.toLowerCase().includes('хвойное') || tree.species.toLowerCase().includes('ель') || tree.species.toLowerCase().includes('сосна') || tree.species.toLowerCase().includes('лиственниц') || tree.species.toLowerCase().includes('пихта') || tree.species.toLowerCase().includes('кедр')) ? '🌲'
                     : '🌳'}
                 </div>
@@ -146,7 +147,7 @@ export default function CatalogView({
                       {STATUS_LABELS[tree.status]}
                     </Badge>
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${tree.lifeStatus === 'cut' ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700'}`}>
-                      {tree.lifeStatus === 'cut' ? '🪵 Спиленное' : '🌿 Живое'}
+                      {tree.lifeStatus === 'cut' ? '🪵 Спиленное (пень)' : '🌿 Живое'}
                     </span>
                   </div>
                 </div>
