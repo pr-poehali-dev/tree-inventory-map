@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import MapView from '@/components/MapView';
 import CatalogView from '@/components/CatalogView';
 import StatsView from '@/components/StatsView';
@@ -8,6 +8,7 @@ import TreeFormDialog from '@/components/TreeFormDialog';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
 import { TreeMarker } from '@/types/tree';
+import { parseXmlPolygons, XmlPolygon } from '@/utils/parseXmlPolygons';
 
 type Tab = 'map' | 'catalog' | 'stats' | 'import' | 'help';
 
@@ -26,6 +27,25 @@ export default function Index() {
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
   const store = useTreeStore();
+  const [xmlPolygons, setXmlPolygons] = useState<XmlPolygon[]>([]);
+  const xmlInputRef = useRef<HTMLInputElement>(null);
+
+  const handleXmlImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const polygons = parseXmlPolygons(ev.target?.result as string);
+        setXmlPolygons(prev => [...prev, ...polygons]);
+        setActiveTab('map');
+      } catch {
+        alert('Не удалось разобрать XML файл. Поддерживаются KML и GML/Росреестр.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPendingLatLng({ lat, lng });
@@ -113,7 +133,7 @@ export default function Index() {
             ))}
           </div>
 
-          <div className="p-3 border-t border-[var(--border)]">
+          <div className="p-3 border-t border-[var(--border)] space-y-2">
             <button
               onClick={() => {
                 setEditingTree(null);
@@ -125,6 +145,24 @@ export default function Index() {
               <Icon name="Plus" size={16} />
               Добавить дерево
             </button>
+
+            <input ref={xmlInputRef} type="file" accept=".xml,.kml,.gml" className="hidden" onChange={handleXmlImport} />
+            <button
+              onClick={() => xmlInputRef.current?.click()}
+              className="w-full flex items-center gap-2 px-3 py-2 border border-[var(--forest-light)]/40 hover:bg-[var(--forest-pale)] text-[var(--forest-dark)] rounded-lg text-sm font-medium transition-colors"
+            >
+              <Icon name="FileCode" size={16} />
+              Импорт XML
+            </button>
+            {xmlPolygons.length > 0 && (
+              <button
+                onClick={() => setXmlPolygons([])}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Icon name="X" size={14} />
+                Убрать границы ({xmlPolygons.length})
+              </button>
+            )}
           </div>
         </nav>
 
@@ -139,6 +177,7 @@ export default function Index() {
                 onDelete={store.deleteTree}
                 onSelect={store.setSelectedTreeId}
                 selectedTreeId={store.selectedTreeId}
+                xmlPolygons={xmlPolygons}
               />
             </div>
           )}
