@@ -99,6 +99,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [geoActive, setGeoActive] = useState(false);
   const [geoError, setGeoError] = useState('');
   const [geoFollow, setGeoFollow] = useState(false);
+  const [geoPos, setGeoPos] = useState<{ lat: number; lng: number } | null>(null);
 
 
   const geoIcon = L.divIcon({
@@ -125,6 +126,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         const map = mapRef.current;
         if (!map) return;
+        setGeoPos({ lat, lng });
 
         if (!geoMarkerRef.current) {
           geoMarkerRef.current = L.marker([lat, lng], { icon: geoIcon, zIndexOffset: 1000 }).addTo(map);
@@ -168,6 +170,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     if (geoCircleRef.current) { geoCircleRef.current.remove(); geoCircleRef.current = null; }
     setGeoActive(false);
     setGeoFollow(false);
+    setGeoPos(null);
   };
 
   const shiftTile = (dx: number, dy: number) => {
@@ -355,6 +358,14 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
               ${geoFollow ? 'bg-blue-100 text-blue-700' : 'bg-white/90 text-[var(--stone)]'}`}
           >
             🔒 {geoFollow ? 'Следить: вкл.' : 'Следить: выкл.'}
+          </button>
+        )}
+        {geoActive && geoPos && !isGuest && (
+          <button
+            onClick={() => { onMapClick(geoPos.lat, geoPos.lng); }}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all bg-[var(--forest-mid)] text-white hover:bg-[var(--forest-dark)]"
+          >
+            🌳 Добавить дерево здесь
           </button>
         )}
         {geoError && (
