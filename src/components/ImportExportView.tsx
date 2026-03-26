@@ -69,24 +69,6 @@ interface Props {
   isGuest?: boolean;
 }
 
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
-      { headers: { 'User-Agent': 'tree-inventory-map/1.0' } }
-    );
-    const data = await res.json();
-    const a = data.address || {};
-    const parts = [
-      a.road || a.pedestrian || a.path || a.footway,
-      a.house_number,
-    ].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : '';
-  } catch (_) {
-    return '';
-  }
-}
-
 export default function ImportExportView({ trees, onImport, isGuest = false }: Props) {
   const kmlRef  = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
@@ -95,8 +77,6 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
     ok: number; skip: number; rows: string[];
     sample?: { name: string; lat: number; lng: number }[];
   } | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodingProgress, setGeocodingProgress] = useState(0);
 
   // ── Экспорт ─────────────────────────────────────────────────────────────────
 
@@ -243,39 +223,24 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
           count:       1,
           status:      'good',
           condition:   treeInfo.condition,
-          lifeStatus:  'alive',
           description: code ? `Код объекта: ${code}` : undefined,
           createdAt:   new Date().toISOString().split('T')[0],
           updatedAt:   new Date().toISOString().split('T')[0],
         });
       });
 
-      if (imported.length === 0) {
-        setTxtPreview({ ok: 0, skip: skipped.length, rows: skipped });
-        return;
-      }
-
-      // Геокодируем адреса пачками по 1 запрос в секунду (лимит Nominatim)
-      setGeocoding(true);
-      setGeocodingProgress(0);
-
-      const withAddresses = [...imported];
-      for (let i = 0; i < withAddresses.length; i++) {
-        const address = await reverseGeocode(withAddresses[i].lat, withAddresses[i].lng);
-        if (address) withAddresses[i] = { ...withAddresses[i], address };
-        setGeocodingProgress(Math.round(((i + 1) / withAddresses.length) * 100));
-        if (i < withAddresses.length - 1) await new Promise(r => setTimeout(r, 1100));
-      }
-
-      setGeocoding(false);
-
-      const sample = withAddresses.slice(0, 3).map(t => ({
-        name: t.name, lat: t.lat, lng: t.lng,
+      // Показываем первые 3 объекта как превью
+      const sample = imported.slice(0, 3).map(t => ({
+        name: t.name,
+        lat:  t.lat,
+        lng:  t.lng,
       }));
-      setTxtPreview({ ok: withAddresses.length, skip: skipped.length, rows: skipped, sample });
-      onImport(withAddresses);
+
+      setTxtPreview({ ok: imported.length, skip: skipped.length, rows: skipped, sample });
+      if (imported.length > 0) onImport(imported);
     };
 
+    // Сначала пробуем UTF-8; большинство современных файлов в нём
     reader.readAsText(file, 'utf-8');
     e.target.value = '';
   };
@@ -304,11 +269,10 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
           diameter:  20,
           height:    10,
           count:     1,
-          status:     'good',
-          condition:  'healthy',
-          lifeStatus: 'alive',
-          createdAt:  new Date().toISOString().split('T')[0],
-          updatedAt:  new Date().toISOString().split('T')[0],
+          status:    'good',
+          condition: 'healthy',
+          createdAt: new Date().toISOString().split('T')[0],
+          updatedAt: new Date().toISOString().split('T')[0],
         };
       });
 
@@ -413,22 +377,12 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
           </div>
 
           <button
-            onClick={() => !geocoding && txtRef.current?.click()}
-            disabled={geocoding}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-colors text-sm text-white font-medium shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={() => txtRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-colors text-sm text-white font-medium shadow-sm"
           >
-            <Icon name={geocoding ? 'Loader2' : 'FileText'} size={15} className={`text-white ${geocoding ? 'animate-spin' : ''}`} />
-            {geocoding ? `Определяю адреса… ${geocodingProgress}%` : 'Загрузить TXT файл (МСК-167)'}
+            <Icon name="FileText" size={15} className="text-white" />
+            Загрузить TXT файл (МСК-167)
           </button>
-
-          {geocoding && (
-            <div className="mt-2">
-              <div className="w-full bg-purple-100 rounded-full h-1.5">
-                <div className="bg-purple-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${geocodingProgress}%` }} />
-              </div>
-              <div className="text-[10px] text-purple-600 mt-1 text-center">Получаю адрес по координатам для каждого дерева…</div>
-            </div>
-          )}
 
           {/* Результат импорта */}
           {txtPreview && (
