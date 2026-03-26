@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 
-type MapLayer = 'osm' | 'esri_satellite' | 'esri_hybrid' | 'google_map' | 'google_satellite' | 'google_hybrid' | 'yandex_map' | 'yandex_satellite';
+type MapLayer = 'yandex_map' | 'yandex_satellite';
 
 interface Props {
   trees: TreeMarker[];
@@ -23,27 +23,6 @@ const LAYER_GROUPS: { label: string; layers: { key: MapLayer; label: string }[] 
       { key: 'yandex_satellite', label: 'Спутник' },
     ],
   },
-  {
-    label: 'Google',
-    layers: [
-      { key: 'google_map',       label: 'Карта' },
-      { key: 'google_satellite', label: 'Спутник' },
-      { key: 'google_hybrid',    label: 'Гибрид' },
-    ],
-  },
-  {
-    label: 'Esri',
-    layers: [
-      { key: 'esri_satellite', label: 'Спутник' },
-      { key: 'esri_hybrid',    label: 'Гибрид' },
-    ],
-  },
-  {
-    label: 'OpenStreetMap',
-    layers: [
-      { key: 'osm', label: 'Схема' },
-    ],
-  },
 ];
 
 function getTileLayer(type: MapLayer): L.TileLayer {
@@ -58,35 +37,10 @@ function getTileLayer(type: MapLayer): L.TileLayer {
         'https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
         { attribution: '© Яндекс', maxZoom: 19 }
       );
-    case 'google_map':
-      return L.tileLayer(
-        'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
-      );
-    case 'google_satellite':
-      return L.tileLayer(
-        'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
-      );
-    case 'google_hybrid':
-      return L.tileLayer(
-        'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
-      );
-    case 'esri_satellite':
-      return L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri', maxZoom: 19 }
-      );
-    case 'esri_hybrid':
-      return L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri', maxZoom: 19 }
-      );
     default:
       return L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        { attribution: '© OpenStreetMap © CARTO', maxZoom: 20 }
+        'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+        { attribution: '© Яндекс', maxZoom: 19 }
       );
   }
 }
@@ -138,7 +92,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>(() => {
     const saved = localStorage.getItem('mapLayer') as MapLayer;
-    const valid: MapLayer[] = ['osm', 'esri_satellite', 'esri_hybrid', 'google_map', 'google_satellite', 'google_hybrid', 'yandex_map', 'yandex_satellite'];
+    const valid: MapLayer[] = ['yandex_map', 'yandex_satellite'];
     return valid.includes(saved) ? saved : 'yandex_map';
   });
   const [showLayerPicker, setShowLayerPicker] = useState(false);
