@@ -1,96 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TreeMarker, TreeStatus } from '@/types/tree';
 
-const MOCK_TREES: TreeMarker[] = [
-  {
-    id: '1',
-    lat: 53.7102,
-    lng: 91.6886,
-    name: 'Берёза №1',
-    species: 'Берёза повислая',
-    diameter: 28,
-    height: 14,
-    count: 1,
-    age: 45,
-    status: 'good',
-    condition: 'healthy',
-    lifeStatus: 'alive',
-    description: 'Центральный парк, ул. Ленина',
-    createdAt: '2024-03-15',
-    updatedAt: '2024-03-15',
-  },
-  {
-    id: '2',
-    lat: 53.7145,
-    lng: 91.6920,
-    name: 'Дуб №1',
-    species: 'Дуб черешчатый',
-    diameter: 65,
-    height: 22,
-    count: 1,
-    age: 120,
-    status: 'satisfactory',
-    condition: 'weakened',
-    lifeStatus: 'alive',
-    description: 'Вековой дуб, требует наблюдения',
-    createdAt: '2024-03-15',
-    updatedAt: '2024-03-15',
-  },
-  {
-    id: '3',
-    lat: 53.7080,
-    lng: 91.6850,
-    name: 'Ель №3',
-    species: 'Ель обыкновенная',
-    diameter: 32,
-    height: 18,
-    count: 3,
-    age: 55,
-    status: 'good',
-    condition: 'healthy',
-    lifeStatus: 'alive',
-    createdAt: '2024-03-15',
-    updatedAt: '2024-03-15',
-  },
-  {
-    id: '4',
-    lat: 53.7065,
-    lng: 91.6910,
-    name: 'Тополь №2',
-    species: 'Тополь пирамидальный',
-    diameter: 42,
-    height: 28,
-    count: 2,
-    age: 30,
-    status: 'emergency',
-    condition: 'dying',
-    lifeStatus: 'cut',
-    description: 'Требует срочной вырубки',
-    createdAt: '2024-03-10',
-    updatedAt: '2024-04-01',
-  },
-  {
-    id: '5',
-    lat: 53.7120,
-    lng: 91.6830,
-    name: 'Клён №1',
-    species: 'Клён остролистный',
-    diameter: 22,
-    height: 10,
-    count: 4,
-    age: 25,
-    status: 'bad',
-    condition: 'strongly_weakened',
-    lifeStatus: 'alive',
-    createdAt: '2024-03-15',
-    updatedAt: '2024-03-15',
-  },
-];
-
-let treeIdCounter = 6;
+const TREES_URL = 'https://functions.poehali.dev/1b6d0efc-fd2f-47f8-bbb8-13e7b83d6536';
 
 export function useTreeStore() {
-  const [trees, setTrees] = useState<TreeMarker[]>(MOCK_TREES);
+  const [trees, setTrees] = useState<TreeMarker[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [filterSpecies, setFilterSpecies] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<TreeStatus | ''>('');
@@ -98,34 +13,57 @@ export function useTreeStore() {
   const [filterDiameterMax, setFilterDiameterMax] = useState<number>(200);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const addTree = useCallback((tree: Omit<TreeMarker, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTree: TreeMarker = {
-      ...tree,
-      id: String(treeIdCounter++),
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
-    setTrees(prev => [...prev, newTree]);
+  useEffect(() => {
+    fetch(TREES_URL)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setTrees(data);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addTree = useCallback(async (tree: Omit<TreeMarker, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const res = await fetch(TREES_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tree),
+    });
+    const newTree: TreeMarker = await res.json();
+    setTrees(prev => [newTree, ...prev]);
     return newTree;
   }, []);
 
-  const updateTree = useCallback((id: string, updates: Partial<TreeMarker>) => {
-    setTrees(prev =>
-      prev.map(t =>
-        t.id === id
-          ? { ...t, ...updates, updatedAt: new Date().toISOString().split('T')[0] }
-          : t
-      )
-    );
-  }, []);
+  const updateTree = useCallback(async (id: string, updates: Partial<TreeMarker>) => {
+    const existing = trees.find(t => t.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...updates };
+    const res = await fetch(`${TREES_URL}?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(merged),
+    });
+    const updated: TreeMarker = await res.json();
+    setTrees(prev => prev.map(t => t.id === id ? updated : t));
+  }, [trees]);
 
-  const deleteTree = useCallback((id: string) => {
+  const deleteTree = useCallback(async (id: string) => {
     setTrees(prev => prev.filter(t => t.id !== id));
     setSelectedTreeId(prev => (prev === id ? null : prev));
+    await fetch(`${TREES_URL}?id=${id}`, { method: 'DELETE' });
   }, []);
 
-  const importTrees = useCallback((newTrees: TreeMarker[]) => {
-    setTrees(prev => [...prev, ...newTrees]);
+  const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
+    const added: TreeMarker[] = [];
+    for (const tree of newTrees) {
+      const res = await fetch(TREES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tree),
+      });
+      const saved: TreeMarker = await res.json();
+      added.push(saved);
+    }
+    setTrees(prev => [...added, ...prev]);
   }, []);
 
   const filteredTrees = trees.filter(tree => {
@@ -136,8 +74,7 @@ export function useTreeStore() {
       searchQuery &&
       !tree.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
       !tree.species.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false;
+    ) return false;
     return true;
   });
 
@@ -145,6 +82,7 @@ export function useTreeStore() {
 
   return {
     trees,
+    loading,
     filteredTrees,
     selectedTree,
     selectedTreeId,

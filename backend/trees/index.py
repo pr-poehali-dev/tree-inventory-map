@@ -14,6 +14,7 @@ CORS = {
     "Access-Control-Allow-Headers": "Content-Type",
 }
 
+SCHEMA = "t_p59085732_tree_inventory_map"
 SELECT_COLS = "id,lat,lng,name,species,diameter,height,count,age,status,condition,description,photo_url,created_at,updated_at"
 
 
@@ -57,12 +58,12 @@ def handler(event: dict, context) -> dict:
     try:
         if method == "GET":
             if tree_id:
-                cur.execute(f"SELECT {SELECT_COLS} FROM trees WHERE id = %s", (tree_id,))
+                cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
                 row = cur.fetchone()
                 if not row:
                     return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Not found"})}
                 return {"statusCode": 200, "headers": CORS, "body": json.dumps(fmt(row))}
-            cur.execute(f"SELECT {SELECT_COLS} FROM trees ORDER BY created_at DESC")
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees ORDER BY created_at DESC")
             rows = cur.fetchall()
             return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in rows])}
 
@@ -71,7 +72,7 @@ def handler(event: dict, context) -> dict:
             new_id = str(uuid.uuid4())
             today = date.today().isoformat()
             cur.execute(
-                """INSERT INTO trees
+                f"""INSERT INTO {SCHEMA}.trees
                    (id,lat,lng,name,species,diameter,height,count,age,
                     status,condition,description,photo_url,created_at,updated_at)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
@@ -86,7 +87,7 @@ def handler(event: dict, context) -> dict:
                 ),
             )
             conn.commit()
-            cur.execute(f"SELECT {SELECT_COLS} FROM trees WHERE id = %s", (new_id,))
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (new_id,))
             return {"statusCode": 201, "headers": CORS, "body": json.dumps(fmt(cur.fetchone()))}
 
         if method == "PUT":
@@ -95,7 +96,7 @@ def handler(event: dict, context) -> dict:
             body = json.loads(event.get("body") or "{}")
             today = date.today().isoformat()
             cur.execute(
-                """UPDATE trees SET
+                f"""UPDATE {SCHEMA}.trees SET
                    lat=%s,lng=%s,name=%s,species=%s,diameter=%s,height=%s,
                    count=%s,age=%s,status=%s,condition=%s,
                    description=%s,photo_url=%s,updated_at=%s
@@ -110,7 +111,7 @@ def handler(event: dict, context) -> dict:
                 ),
             )
             conn.commit()
-            cur.execute(f"SELECT {SELECT_COLS} FROM trees WHERE id = %s", (tree_id,))
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
             row = cur.fetchone()
             if not row:
                 return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Not found"})}
@@ -119,7 +120,7 @@ def handler(event: dict, context) -> dict:
         if method == "DELETE":
             if not tree_id:
                 return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}
-            cur.execute("DELETE FROM trees WHERE id = %s", (tree_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
             conn.commit()
             return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
