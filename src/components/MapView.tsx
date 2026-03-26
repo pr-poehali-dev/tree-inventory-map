@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
+import MeasureTool from './MeasureTool';
 
 
 type MapLayer = 'scheme' | 'satellite' | 'hybrid';
@@ -90,6 +91,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
+  const [measureMode, setMeasureMode] = useState<'distance' | 'area' | null>(null);
 
   const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
@@ -303,6 +305,32 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           </button>
         ))}
       </div>
+
+      {/* Measure tools */}
+      {!measureMode && (
+        <div className="absolute bottom-8 right-4 z-[1000] flex flex-col gap-1.5">
+          <button
+            onClick={() => setMeasureMode('distance')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)] transition-all"
+          >
+            📏 Расстояние
+          </button>
+          <button
+            onClick={() => setMeasureMode('area')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)] transition-all"
+          >
+            📐 Площадь
+          </button>
+        </div>
+      )}
+
+      {measureMode && mapRef.current && (
+        <MeasureTool
+          map={mapRef.current}
+          mode={measureMode}
+          onClose={() => setMeasureMode(null)}
+        />
+      )}
 
       {/* Legend */}
       <div className="absolute bottom-8 left-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg text-xs">
