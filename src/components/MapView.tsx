@@ -258,6 +258,17 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
             <span className="text-gray-600">{label}</span>
           </div>
         ))}
+        <div className="font-semibold text-[var(--forest-dark)] mt-2 mb-1 font-heading">Тип</div>
+        {[
+          { emoji: '🌳', label: 'Лиственные' },
+          { emoji: '🌲', label: 'Хвойные' },
+          { emoji: '🌿', label: 'Кустарники' },
+        ].map(({ emoji, label }) => (
+          <div key={label} className="flex items-center gap-2 py-0.5">
+            <span className="text-sm">{emoji}</span>
+            <span className="text-gray-600">{label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
