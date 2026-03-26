@@ -136,7 +136,9 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const [addMode, setAddMode] = useState(false);
-  const [activeLayer, setActiveLayer] = useState<MapLayer>('osm');
+  const [activeLayer, setActiveLayer] = useState<MapLayer>(
+    () => (localStorage.getItem('mapLayer') as MapLayer) || 'osm'
+  );
   const [showLayerPicker, setShowLayerPicker] = useState(false);
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
@@ -351,7 +353,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                 {group.layers.map(({ key, label }) => (
                   <button
                     key={key}
-                    onClick={() => { setActiveLayer(key); setShowLayerPicker(false); }}
+                    onClick={() => { setActiveLayer(key); localStorage.setItem('mapLayer', key); setShowLayerPicker(false); }}
                     className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-all
                       ${activeLayer === key
                         ? 'bg-[var(--forest-mid)] text-white'
