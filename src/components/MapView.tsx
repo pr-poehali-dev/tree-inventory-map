@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
+import YandexPanorama from './YandexPanorama';
 
 type MapLayer = 'scheme' | 'satellite' | 'hybrid';
 
@@ -89,6 +90,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
+  const [panorama, setPanorama] = useState<{ lat: number; lng: number } | null>(null);
 
   const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
@@ -302,6 +304,24 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           </button>
         ))}
       </div>
+
+      {/* Panorama button */}
+      <button
+        onClick={() => {
+          const map = mapRef.current;
+          if (!map) return;
+          const c = map.getCenter();
+          setPanorama({ lat: c.lat, lng: c.lng });
+        }}
+        title="Яндекс Панорама"
+        className="absolute bottom-8 right-4 z-[1000] bg-white/95 hover:bg-white text-[var(--forest-dark)] rounded-xl shadow-lg px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all"
+      >
+        👁 Панорама
+      </button>
+
+      {panorama && (
+        <YandexPanorama lat={panorama.lat} lng={panorama.lng} onClose={() => setPanorama(null)} />
+      )}
 
       {/* Legend */}
       <div className="absolute bottom-8 left-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg text-xs">
