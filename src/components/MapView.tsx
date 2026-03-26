@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
 
-type MapLayer = 'scheme' | 'satellite' | 'hybrid';
+type MapLayer = 'osm' | 'esri_satellite' | 'esri_hybrid' | 'yandex_map' | 'yandex_satellite' | 'google_map' | 'google_satellite' | 'google_hybrid';
 
 interface Props {
   trees: TreeMarker[];
@@ -15,23 +15,73 @@ interface Props {
   selectedTreeId: string | null;
 }
 
-const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
-  scheme:    { label: 'Схема',    icon: '🗺' },
-  satellite: { label: 'Спутник', icon: '🛰' },
-  hybrid:    { label: 'Гибрид',  icon: '🌍' },
-};
+const LAYER_GROUPS: { label: string; layers: { key: MapLayer; label: string }[] }[] = [
+  {
+    label: 'OpenStreetMap',
+    layers: [
+      { key: 'osm', label: 'Схема' },
+    ],
+  },
+  {
+    label: 'Яндекс',
+    layers: [
+      { key: 'yandex_map',       label: 'Карта' },
+      { key: 'yandex_satellite', label: 'Спутник' },
+    ],
+  },
+  {
+    label: 'Google',
+    layers: [
+      { key: 'google_map',       label: 'Карта' },
+      { key: 'google_satellite', label: 'Спутник' },
+      { key: 'google_hybrid',    label: 'Гибрид' },
+    ],
+  },
+  {
+    label: 'Esri',
+    layers: [
+      { key: 'esri_satellite', label: 'Спутник' },
+      { key: 'esri_hybrid',    label: 'Гибрид' },
+    ],
+  },
+];
 
 function getTileLayer(type: MapLayer): L.TileLayer {
   switch (type) {
-    case 'satellite':
+    case 'yandex_map':
       return L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri © USGS', maxZoom: 19 }
+        'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&v=24.06.12-0&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+        { attribution: '© Яндекс', maxZoom: 19, tms: false }
       );
-    case 'hybrid':
+    case 'yandex_satellite':
+      return L.tileLayer(
+        'https://core-sat.maps.yandex.net/tiles?l=sat&v=3.986.0&x={x}&y={y}&z={z}&scale=1&lang=ru_RU',
+        { attribution: '© Яндекс', maxZoom: 19 }
+      );
+    case 'google_map':
+      return L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
+      );
+    case 'google_satellite':
+      return L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
+      );
+    case 'google_hybrid':
+      return L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+        { attribution: '© Google', maxZoom: 20, subdomains: ['0','1','2','3'] }
+      );
+    case 'esri_satellite':
       return L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri © USGS', maxZoom: 19 }
+        { attribution: '© Esri', maxZoom: 19 }
+      );
+    case 'esri_hybrid':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: '© Esri', maxZoom: 19 }
       );
     default:
       return L.tileLayer(
@@ -86,7 +136,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const [addMode, setAddMode] = useState(false);
-  const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
+  const [activeLayer, setActiveLayer] = useState<MapLayer>('osm');
+  const [showLayerPicker, setShowLayerPicker] = useState(false);
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
 
@@ -154,7 +205,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       if (container) container.style.transform = `translate(${tileOffset.x}px, ${tileOffset.y}px)`;
     });
 
-    if (activeLayer === 'hybrid') {
+    if (activeLayer === 'esri_hybrid') {
       const labels = getLabelsLayer();
       labels.addTo(map);
       labelsLayerRef.current = labels;
@@ -283,24 +334,35 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         )}
       </div>
 
-      {/* Layer switcher */}
-      <div className="absolute top-16 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex">
-        {(Object.entries(LAYERS) as [MapLayer, { label: string; icon: string }][]).map(([key, val]) => (
-          <button
-            key={key}
-            onClick={() => setActiveLayer(key)}
-            className={`
-              flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all
-              ${activeLayer === key
-                ? 'bg-[var(--forest-mid)] text-white'
-                : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
-              }
-            `}
-          >
-            <span>{val.icon}</span>
-            <span>{val.label}</span>
-          </button>
-        ))}
+      {/* Layer picker */}
+      <div className="absolute top-16 right-4 z-[1000] flex flex-col items-end gap-1">
+        <button
+          onClick={() => setShowLayerPicker(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
+            ${showLayerPicker ? 'bg-[var(--forest-mid)] text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
+        >
+          🗺 Подложка
+        </button>
+        {showLayerPicker && (
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden min-w-[140px]">
+            {LAYER_GROUPS.map(group => (
+              <div key={group.label}>
+                <div className="text-[10px] font-bold text-[var(--stone)] px-3 pt-2 pb-0.5 uppercase tracking-wide">{group.label}</div>
+                {group.layers.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setActiveLayer(key); setShowLayerPicker(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-all
+                      ${activeLayer === key
+                        ? 'bg-[var(--forest-mid)] text-white'
+                        : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
+                      }`}
+                  >{label}</button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Legend */}
