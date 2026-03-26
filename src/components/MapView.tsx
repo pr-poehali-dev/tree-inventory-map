@@ -14,50 +14,56 @@ interface RosreestrLayerConfig {
   id: RosreestrLayerId;
   label: string;
   icon: string;
-  layers: string;
+  url: string;
   color: string;
+  minZoom: number;
 }
 
+// XYZ тайлы публичной кадастровой карты Росреестра (PKK)
+// Работают без авторизации начиная с определённого зума
 const ROSREESTR_LAYERS: RosreestrLayerConfig[] = [
   {
     id: 'land',
     label: 'Земельные участки (ЕГРН)',
     icon: '🟨',
-    layers: 'show:0',
+    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/CadastreObjects/MapServer/tile/{z}/{y}/{x}',
     color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    minZoom: 10,
   },
   {
     id: 'oks',
     label: 'Объекты кап. строительства',
     icon: '🟥',
-    layers: 'show:5',
+    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/GKUOKS/MapServer/tile/{z}/{y}/{x}',
     color: 'bg-red-100 text-red-800 border-red-300',
+    minZoom: 10,
   },
   {
     id: 'nature',
     label: 'Природные территории',
     icon: '🟩',
-    layers: 'show:6',
+    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/ProtectedObjects/MapServer/tile/{z}/{y}/{x}',
     color: 'bg-green-100 text-green-800 border-green-300',
+    minZoom: 8,
   },
   {
     id: 'zouit',
     label: 'ЗОУИТ (энергетика, связь, транспорт)',
     icon: '🟦',
-    layers: 'show:16',
+    url: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/ZONES/MapServer/tile/{z}/{y}/{x}',
     color: 'bg-blue-100 text-blue-800 border-blue-300',
+    minZoom: 8,
   },
 ];
 
-function makeRosreestrWMS(layers: string): L.TileLayer.WMS {
-  return L.tileLayer.wms('https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/CadastreSelected/MapServer/export', {
-    layers,
-    format: 'image/png',
-    transparent: true,
-    version: '2.0.0',
-    opacity: 0.6,
+function makeRosreestrLayer(cfg: RosreestrLayerConfig): L.TileLayer {
+  return L.tileLayer(cfg.url, {
+    opacity: 0.7,
     attribution: '© Росреестр',
-  } as L.WMSOptions);
+    maxZoom: 20,
+    minZoom: cfg.minZoom,
+    crossOrigin: true,
+  });
 }
 
 interface Props {
@@ -167,7 +173,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const geoMarkerRef = useRef<L.Marker | null>(null);
   const geoCircleRef = useRef<L.Circle | null>(null);
   const geoWatchRef = useRef<number | null>(null);
-  const rosreestrLayersRef = useRef<Map<RosreestrLayerId, L.TileLayer.WMS>>(new Map());
+  const rosreestrLayersRef = useRef<Map<RosreestrLayerId, L.TileLayer>>(new Map());
   const [activeRosreestr, setActiveRosreestr] = useState<Set<RosreestrLayerId>>(new Set());
   const [showRosreestrPanel, setShowRosreestrPanel] = useState(false);
   const [addMode, setAddMode] = useState(false);
@@ -265,7 +271,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         if (wms) { map.removeLayer(wms); rosreestrLayersRef.current.delete(id); }
       } else {
         next.add(id);
-        const wms = makeRosreestrWMS(cfg.layers);
+        const wms = makeRosreestrLayer(cfg);
         wms.addTo(map);
         rosreestrLayersRef.current.set(id, wms);
       }
@@ -539,7 +545,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
               );
             })}
             <div className="text-[9px] text-gray-400 mt-1 border-t pt-1.5">
-              Данные: Росреестр НСПД / pkk.rosreestr.ru
+              Данные: Росреестр / pkk.rosreestr.ru<br/>
+              ⚠️ Слои видны при приближении от 10–14 масштаба
             </div>
           </div>
         )}
