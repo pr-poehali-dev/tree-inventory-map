@@ -92,8 +92,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
   const [measureMode, setMeasureMode] = useState<'distance' | 'area' | null>(null);
-  const [cadastreLayers, setCadastreLayers] = useState({ parcels: false, buildings: false, constructions: false });
-  const cadastreLayersRef = useRef<{ parcels: L.TileLayer | null; buildings: L.TileLayer | null; constructions: L.TileLayer | null }>({ parcels: null, buildings: null, constructions: null });
+
 
   const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
@@ -166,40 +165,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     }
   }, [activeLayer, tileOffset]);
 
-  // Кадастровые слои Росреестра (PKK тайлы)
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
 
-    const CADASTRE_URLS: Record<string, string> = {
-      parcels:       'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/CadastreObjects/MapServer/tile/{z}/{y}/{x}',
-      buildings:     'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/Buildings/MapServer/tile/{z}/{y}/{x}',
-      constructions: 'https://pkk.rosreestr.ru/arcgis/rest/services/PKK6/Constructions/MapServer/tile/{z}/{y}/{x}',
-    };
-
-    (Object.keys(cadastreLayers) as (keyof typeof cadastreLayers)[]).forEach(key => {
-      const enabled = cadastreLayers[key];
-      const existing = cadastreLayersRef.current[key];
-
-      if (enabled) {
-        if (!existing) {
-          const layer = L.tileLayer(CADASTRE_URLS[key], {
-            attribution: '© Росреестр',
-            opacity: 0.8,
-            maxZoom: 20,
-            tms: false,
-          });
-          layer.addTo(map);
-          cadastreLayersRef.current[key] = layer;
-        }
-      } else {
-        if (existing) {
-          map.removeLayer(existing);
-          cadastreLayersRef.current[key] = null;
-        }
-      }
-    });
-  }, [cadastreLayers]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -321,31 +287,6 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
             )}
           </div>
         )}
-      </div>
-
-      {/* Cadastre panel */}
-      <div className="absolute top-28 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden">
-        <div className="px-3 py-2 text-[10px] font-bold text-[var(--stone)] uppercase tracking-wide border-b border-gray-100">
-          🏛 Кадастр
-        </div>
-        {[
-          { key: 'parcels',       label: 'Земельные участки', color: 'bg-orange-400' },
-          { key: 'buildings',     label: 'Здания',            color: 'bg-red-400' },
-          { key: 'constructions', label: 'Сооружения',        color: 'bg-purple-400' },
-        ].map(({ key, label, color }) => {
-          const k = key as keyof typeof cadastreLayers;
-          return (
-            <button
-              key={key}
-              onClick={() => setCadastreLayers(v => ({ ...v, [k]: !v[k] }))}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all text-left
-                ${cadastreLayers[k] ? 'bg-orange-50 text-orange-800' : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
-            >
-              <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${cadastreLayers[k] ? color : 'bg-gray-200'}`} />
-              {label}
-            </button>
-          );
-        })}
       </div>
 
       {/* Layer switcher */}
