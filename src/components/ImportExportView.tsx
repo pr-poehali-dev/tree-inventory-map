@@ -3,68 +3,45 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { TreeMarker } from '@/types/tree';
 
-// МСК-167 → WGS84 через обратное проецирование Гаусса-Крюгера
-// Регион: Красноярский край (Минусинск), эллипсоид Красовского → WGS84
-// Параметры МСК-167: осевой меридиан 93°, dx=106797.80, dy=-5578022.50
-// Сдвиг СК-95 → WGS84: dX=-25, dY=141, dZ=80 (Helmert, метры)
+// МСК-167 → WGS84 через аффинное преобразование по опорным точкам (МНК)
+// Эталон: городокская X=378072.760, Y=20331.493 → 53.72458, 91.68978
+// В файле: первая колонка = X (отклонение от осевого ~20000), вторая = Y (северная ~378000)
+// Опорные точки для калибровки:
+const _calPts = [
+  { x: 378072.760, y: 20331.493, lat: 53.72458, lon: 91.68978 },
+];
 
 function msk167toWGS84(xMsk: number, yMsk: number): [number, number] {
-  // 1. Снимаем смещение МСК-167 → СК-95 (Гаусс-Крюгер)
-  const X = xMsk - 106797.80;
-  const Y = yMsk + 5578022.50;
+  if (_calPts.length === 0) return [xMsk, yMsk];
 
-  // 2. Эллипсоид Красовского
-  const a = 6378245.0;
-  const f = 1 / 298.3;
-  const e2 = 2*f - f*f;
-
-  // 3. Обратное проецирование Гаусса-Крюгера → геодезические СК-95
-  const L0 = 93.0 * Math.PI / 180;
-  const B0 = X / (a * (1 - e2/4 - 3*e2*e2/64));
-  const sinB0 = Math.sin(B0);
-  const cosB0 = Math.cos(B0);
-  const tanB0 = Math.tan(B0);
-  const N0 = a / Math.sqrt(1 - e2*sinB0*sinB0);
-  const T0 = tanB0 * tanB0;
-  const C0 = e2 / (1 - e2) * cosB0 * cosB0;
-  const R0 = a * (1 - e2) / Math.pow(1 - e2*sinB0*sinB0, 1.5);
-  const D = Y / N0;
-  const D2 = D*D, D3 = D2*D, D4 = D2*D2, D5 = D4*D, D6 = D4*D2;
-
-  const lat = B0
-    - (N0*tanB0/R0) * (D2/2 - (5 + 3*T0 + 10*C0 - 4*C0*C0 - 9*e2/(1-e2))*D4/24
-    + (61 + 90*T0 + 298*C0 + 45*T0*T0 - 252*e2/(1-e2) - 3*C0*C0)*D6/720);
-  const lon = L0 + (D - (1 + 2*T0 + C0)*D3/6
-    + (5 - 2*C0 + 28*T0 - 3*C0*C0 + 8*e2/(1-e2) + 24*T0*T0)*D5/120) / cosB0;
-
-  // 4. Красовского → декартовые (XYZ)
-  const latR = lat, lonR = lon;
-  const sinLat = Math.sin(latR), cosLat = Math.cos(latR);
-  const sinLon = Math.sin(lonR), cosLon = Math.cos(lonR);
-  const N = a / Math.sqrt(1 - e2*sinLat*sinLat);
-  const xC = N * cosLat * cosLon;
-  const yC = N * cosLat * sinLon;
-  const zC = N * (1 - e2) * sinLat;
-
-  // 5. Helmert: СК-95 → WGS84 (dX=-25, dY=141, dZ=80)
-  const xW = xC - 25;
-  const yW = yC + 141;
-  const zW = zC + 80;
-
-  // 6. WGS84 декартовые → геодезические
-  const aW = 6378137.0;
-  const fW = 1 / 298.257223563;
-  const e2W = 2*fW - fW*fW;
-  const p = Math.sqrt(xW*xW + yW*yW);
-  let latW = Math.atan2(zW, p * (1 - e2W));
-  for (let i = 0; i < 10; i++) {
-    const sinL = Math.sin(latW);
-    const NW = aW / Math.sqrt(1 - e2W*sinL*sinL);
-    latW = Math.atan2(zW + e2W*NW*sinL, p);
+  if (_calPts.length === 1) {
+    // 1 точка: используем масштаб градусов/метр для широты 53°
+    const p = _calPts[0];
+    const dLat = (xMsk - p.x) * 0.000009009;  // ~1° широты = 111 000 м
+    const dLon = (yMsk - p.y) * 0.000015;      // ~1° долготы = 66 700 м на ш.53°
+    return [p.lat + dLat, p.lon + dLon];
   }
-  const lonW = Math.atan2(yW, xW);
 
-  return [latW * 180 / Math.PI, lonW * 180 / Math.PI];
+  // 2+ точек: МНК аффинное преобразование
+  const n = _calPts.length;
+  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0;
+  let sxLat = 0, syLat = 0, sLat = 0;
+  let sxLon = 0, syLon = 0, sLon = 0;
+  for (const p of _calPts) {
+    sx += p.x; sy += p.y; sx2 += p.x*p.x; sy2 += p.y*p.y; sxy += p.x*p.y;
+    sxLat += p.x*p.lat; syLat += p.y*p.lat; sLat += p.lat;
+    sxLon += p.x*p.lon; syLon += p.y*p.lon; sLon += p.lon;
+  }
+  const A = [[n,sx,sy],[sx,sx2,sxy],[sy,sxy,sy2]];
+  const det = (m: number[][]) =>
+    m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+   -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+   +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  const D = det(A);
+  const repl = (col: number, b: number[]) => A.map((row,i) => row.map((v,j) => j===col ? b[i] : v));
+  const [a0,a1,a2] = [0,1,2].map(i => det(repl(i,[sLat,sxLat,syLat]))/D);
+  const [b0,b1,b2] = [0,1,2].map(i => det(repl(i,[sLon,sxLon,syLon]))/D);
+  return [a0+a1*xMsk+a2*yMsk, b0+b1*xMsk+b2*yMsk];
 }
 
 const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: TreeMarker['condition'] }> = {
