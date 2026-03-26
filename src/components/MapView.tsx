@@ -87,9 +87,16 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
-  const [offset, setOffset] = useState({ lat: 0, lng: 0 });
   const [showOffset, setShowOffset] = useState(false);
-  const STEP = 0.0001; // ~10 метров за нажатие
+
+  const panByMeters = (dx: number, dy: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const metersPerPx = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
+    map.panBy([dx / metersPerPx, dy / metersPerPx], { animate: false });
+  };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -169,14 +176,12 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     });
 
     trees.forEach(tree => {
-      const lat = tree.lat + offset.lat;
-      const lng = tree.lng + offset.lng;
       const existing = markersRef.current.get(tree.id);
       if (existing) {
-        existing.setLatLng([lat, lng]);
+        existing.setLatLng([tree.lat, tree.lng]);
         existing.setIcon(createTreeIcon(tree.status, tree.species));
       } else {
-        const marker = L.marker([lat, lng], { icon: createTreeIcon(tree.status, tree.species) });
+        const marker = L.marker([tree.lat, tree.lng], { icon: createTreeIcon(tree.status, tree.species) });
         const popupDiv = document.createElement('div');
         const root = createRoot(popupDiv);
         root.render(
@@ -187,7 +192,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         markersRef.current.set(tree.id, marker);
       }
     });
-  }, [trees, onEdit, onDelete, onSelect, offset]);
+  }, [trees, onEdit, onDelete, onSelect]);
 
   useEffect(() => {
     if (selectedTreeId) {
@@ -232,37 +237,31 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
         <button
           onClick={() => setShowOffset(v => !v)}
-          title="Сдвиг точек"
+          title="Сдвиг карты"
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all
             ${showOffset ? 'bg-amber-500 text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
         >
-          <span>⊹</span> Сдвиг
-          {(offset.lat !== 0 || offset.lng !== 0) && (
-            <span className="ml-1 bg-amber-200 text-amber-800 rounded px-1 text-[10px]">
-              {(offset.lat * 111000).toFixed(0)}м / {(offset.lng * 73000).toFixed(0)}м
-            </span>
-          )}
+          <span>⊹</span> Сдвиг карты
         </button>
 
         {showOffset && (
           <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex flex-col items-center gap-1">
-            <div className="text-[10px] text-[var(--stone)] mb-1 font-medium">Сдвиг точек на карте</div>
-            {/* Вверх */}
-            <button onClick={() => setOffset(o => ({ ...o, lat: o.lat + STEP }))}
+            <div className="text-[10px] text-[var(--stone)] mb-1 font-medium">Сдвиг карты (1 м/шаг)</div>
+            <button
+              onClick={() => panByMeters(0, -1)}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">↑</button>
-            {/* Влево / Сброс / Вправо */}
             <div className="flex gap-1">
-              <button onClick={() => setOffset(o => ({ ...o, lng: o.lng - STEP }))}
+              <button
+                onClick={() => panByMeters(-1, 0)}
                 className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">←</button>
-              <button onClick={() => setOffset({ lat: 0, lng: 0 })}
-                className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-400 text-[10px] font-semibold transition-all">✕</button>
-              <button onClick={() => setOffset(o => ({ ...o, lng: o.lng + STEP }))}
+              <div className="w-9 h-9" />
+              <button
+                onClick={() => panByMeters(1, 0)}
                 className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">→</button>
             </div>
-            {/* Вниз */}
-            <button onClick={() => setOffset(o => ({ ...o, lat: o.lat - STEP }))}
+            <button
+              onClick={() => panByMeters(0, 1)}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">↓</button>
-            <div className="text-[9px] text-[var(--stone)] mt-1">~{(STEP * 111000).toFixed(0)} м за шаг</div>
           </div>
         )}
       </div>
