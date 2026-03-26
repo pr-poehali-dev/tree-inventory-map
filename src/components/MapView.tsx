@@ -88,14 +88,16 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [addMode, setAddMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
+  const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
 
-  const panByMeters = (dx: number, dy: number) => {
+  const shiftTile = (dx: number, dy: number) => {
     const map = mapRef.current;
     if (!map) return;
     const center = map.getCenter();
     const zoom = map.getZoom();
     const metersPerPx = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
-    map.panBy([dx / metersPerPx, dy / metersPerPx], { animate: false });
+    const px = 1 / metersPerPx;
+    setTileOffset(o => ({ x: o.x + dx * px, y: o.y + dy * px }));
   };
 
   useEffect(() => {
@@ -120,6 +122,16 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     };
   }, []);
 
+  // Apply pixel offset to tile layer container
+  useEffect(() => {
+    const tile = tileLayerRef.current;
+    if (!tile) return;
+    const container = (tile as L.TileLayer & { getContainer?: () => HTMLElement | null }).getContainer?.();
+    if (container) {
+      container.style.transform = `translate(${tileOffset.x}px, ${tileOffset.y}px)`;
+    }
+  }, [tileOffset]);
+
   // Switch tile layer when activeLayer changes
   useEffect(() => {
     const map = mapRef.current;
@@ -137,12 +149,17 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     newTile.addTo(map);
     tileLayerRef.current = newTile;
 
+    newTile.on('load', () => {
+      const container = (newTile as L.TileLayer & { getContainer?: () => HTMLElement | null }).getContainer?.();
+      if (container) container.style.transform = `translate(${tileOffset.x}px, ${tileOffset.y}px)`;
+    });
+
     if (activeLayer === 'hybrid') {
       const labels = getLabelsLayer();
       labels.addTo(map);
       labelsLayerRef.current = labels;
     }
-  }, [activeLayer]);
+  }, [activeLayer, tileOffset]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -246,22 +263,22 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
         {showOffset && (
           <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 flex flex-col items-center gap-1">
-            <div className="text-[10px] text-[var(--stone)] mb-1 font-medium">Сдвиг карты (1 м/шаг)</div>
-            <button
-              onClick={() => panByMeters(0, -1)}
+            <div className="text-[10px] text-[var(--stone)] mb-1 font-medium">Сдвиг подложки (1 м/шаг)</div>
+            <button onClick={() => shiftTile(0, -1)}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">↑</button>
             <div className="flex gap-1">
-              <button
-                onClick={() => panByMeters(-1, 0)}
+              <button onClick={() => shiftTile(-1, 0)}
                 className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">←</button>
-              <div className="w-9 h-9" />
-              <button
-                onClick={() => panByMeters(1, 0)}
+              <button onClick={() => setTileOffset({ x: 0, y: 0 })}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-400 text-sm font-bold transition-all">✕</button>
+              <button onClick={() => shiftTile(1, 0)}
                 className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">→</button>
             </div>
-            <button
-              onClick={() => panByMeters(0, 1)}
+            <button onClick={() => shiftTile(0, 1)}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 text-[var(--forest-dark)] font-bold text-lg transition-all">↓</button>
+            {(tileOffset.x !== 0 || tileOffset.y !== 0) && (
+              <div className="text-[9px] text-amber-600 mt-1">{tileOffset.x.toFixed(1)}px / {tileOffset.y.toFixed(1)}px</div>
+            )}
           </div>
         )}
       </div>
