@@ -131,18 +131,16 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
               </SelectTrigger>
               <SelectContent className="max-h-72">
                 {SPECIES_GROUPS.map((group, gi) => (
-                  <>
-                    {gi > 0 && <SelectSeparator key={`sep-${gi}`} />}
-                    <SelectGroup key={group.group}>
-                      <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1.5">
-                        <span>{group.icon}</span>
-                        {group.group}
-                      </SelectLabel>
-                      {group.items.map(s => (
-                        <SelectItem key={s} value={s} className="pl-6">{s}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </>
+                  <SelectGroup key={group.group}>
+                    {gi > 0 && <SelectSeparator />}
+                    <SelectLabel className="flex items-center gap-1.5 text-[var(--forest-dark)] font-semibold bg-[var(--forest-pale)]/60 px-2 py-1.5">
+                      <span>{group.icon}</span>
+                      {group.group}
+                    </SelectLabel>
+                    {group.items.map(s => (
+                      <SelectItem key={s} value={s} className="pl-6">{s}</SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
