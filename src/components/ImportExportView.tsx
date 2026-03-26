@@ -243,6 +243,7 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
           count:       1,
           status:      'good',
           condition:   treeInfo.condition,
+          lifeStatus:  'alive',
           description: code ? `Код объекта: ${code}` : undefined,
           createdAt:   new Date().toISOString().split('T')[0],
           updatedAt:   new Date().toISOString().split('T')[0],
@@ -303,10 +304,11 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
           diameter:  20,
           height:    10,
           count:     1,
-          status:    'good',
-          condition: 'healthy',
-          createdAt: new Date().toISOString().split('T')[0],
-          updatedAt: new Date().toISOString().split('T')[0],
+          status:     'good',
+          condition:  'healthy',
+          lifeStatus: 'alive',
+          createdAt:  new Date().toISOString().split('T')[0],
+          updatedAt:  new Date().toISOString().split('T')[0],
         };
       });
 
