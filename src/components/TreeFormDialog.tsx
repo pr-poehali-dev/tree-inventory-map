@@ -43,6 +43,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [photoUploading, setPhotoUploading] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const UPLOAD_URL = 'https://functions.poehali.dev/1e1ccb94-3105-4500-95aa-0902c3e7a44f';
 
@@ -396,14 +397,24 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed border-[var(--forest-light)]/40 rounded-lg hover:border-[var(--forest-mid)] hover:bg-[var(--forest-pale)]/30 transition-all"
-              >
-                <Icon name="Upload" size={24} className="text-[var(--forest-mid)]" />
-                <span className="text-sm text-[var(--stone)]">Загрузить фото</span>
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => cameraRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed border-[var(--forest-light)]/40 rounded-lg hover:border-[var(--forest-mid)] hover:bg-[var(--forest-pale)]/30 transition-all"
+                >
+                  <Icon name="Camera" size={24} className="text-[var(--forest-mid)]" />
+                  <span className="text-sm text-[var(--stone)]">Камера</span>
+                </button>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed border-[var(--forest-light)]/40 rounded-lg hover:border-[var(--forest-mid)] hover:bg-[var(--forest-pale)]/30 transition-all"
+                >
+                  <Icon name="Image" size={24} className="text-[var(--forest-mid)]" />
+                  <span className="text-sm text-[var(--stone)]">Галерея</span>
+                </button>
+              </div>
             )}
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           </div>
         </div>
