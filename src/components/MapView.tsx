@@ -221,7 +221,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     tile.addTo(map);
     tileLayerRef.current = tile;
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    // zoom control handled by custom React buttons
     mapRef.current = map;
 
     return () => {
@@ -451,6 +451,22 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
             <span>{val.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Zoom controls */}
+      <div className="absolute right-4 z-[1000] flex flex-col gap-1 shadow-lg rounded-xl overflow-hidden"
+        style={{ bottom: measureMode ? '8px' : '108px' }}>
+        <button
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-11 h-11 flex items-center justify-center bg-white/95 hover:bg-[var(--forest-pale)] text-[var(--forest-dark)] text-xl font-bold transition-all active:scale-95 select-none"
+          aria-label="Приблизить"
+        >+</button>
+        <div className="h-px bg-gray-200" />
+        <button
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-11 h-11 flex items-center justify-center bg-white/95 hover:bg-[var(--forest-pale)] text-[var(--forest-dark)] text-xl font-bold transition-all active:scale-95 select-none"
+          aria-label="Отдалить"
+        >−</button>
       </div>
 
       {/* Measure tools */}
