@@ -72,6 +72,13 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
         </div>
       )}
 
+      {tree.createdByName && (
+        <div className="flex items-center gap-1 text-[10px] text-[#6b7c6e] mb-2 border-t border-gray-100 pt-2">
+          <span>👤</span>
+          <span>Добавил: <span className="font-medium text-[#1a3a2a]">{tree.createdByName}</span></span>
+        </div>
+      )}
+
       <div className="flex gap-1.5 pt-1 border-t border-gray-100">
         <button
           onClick={() => onEdit(tree)}

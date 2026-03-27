@@ -23,9 +23,10 @@ export function useTreeStore() {
   }, []);
 
   const addTree = useCallback(async (tree: Omit<TreeMarker, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const token = localStorage.getItem('tree_auth_token') || '';
     const res = await fetch(TREES_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(tree),
     });
     const newTree: TreeMarker = await res.json();

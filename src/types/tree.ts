@@ -21,6 +21,8 @@ export interface TreeMarker {
   photoUrl?: string;
   createdAt: string;
   updatedAt: string;
+  createdById?: number;
+  createdByName?: string;
 }
 
 export const STATUS_LABELS: Record<TreeStatus, string> = {

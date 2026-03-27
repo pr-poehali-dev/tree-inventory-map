@@ -174,6 +174,12 @@ export default function CatalogView({
                   <Icon name="Navigation" size={10} className="shrink-0" />
                   <span>{tree.lat.toFixed(5)}, {tree.lng.toFixed(5)}</span>
                 </div>
+                {tree.createdByName && (
+                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[var(--stone)]/70">
+                    <Icon name="User" size={10} className="shrink-0" />
+                    <span>{tree.createdByName}</span>
+                  </div>
+                )}
               </div>
             </div>
 

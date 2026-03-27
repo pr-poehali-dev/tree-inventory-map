@@ -1,5 +1,7 @@
 """API для управления деревьями в дендрологической ведомости (CRUD)."""
 
+import hashlib
+import hmac
 import json
 import os
 import uuid
@@ -11,15 +13,51 @@ import psycopg2.extras
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
 SCHEMA = "t_p59085732_tree_inventory_map"
-SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,description,photo_url,created_at,updated_at"
+SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
 
 
 def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"], cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+def verify_token(token: str):
+    secret = os.environ.get("SECRET_KEY", "tree-inventory-salt")
+    try:
+        parts = token.rsplit(":", 1)
+        if len(parts) != 2:
+            return None
+        payload, sig = parts
+        expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return None
+        uid_str, email = payload.split(":", 1)
+        return {"id": int(uid_str), "email": email}
+    except Exception:
+        return None
+
+
+def get_user_from_event(event: dict):
+    """Возвращает (user_id, user_name) из токена авторизации, или (None, None)."""
+    auth = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization") or ""
+    token = auth.replace("Bearer ", "").strip()
+    if not token:
+        return None, None
+    info = verify_token(token)
+    if not info:
+        return None, None
+    conn = psycopg2.connect(os.environ["DATABASE_URL"], cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = conn.cursor()
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.users WHERE id = %s", (info["id"],))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if row:
+        return row["id"], row["name"]
+    return info["id"], info["email"]
 
 
 def fmt(row):
@@ -42,6 +80,8 @@ def fmt(row):
         "photoUrl": d["photo_url"],
         "createdAt": d["created_at"],
         "updatedAt": d["updated_at"],
+        "createdById": d.get("created_by_id"),
+        "createdByName": d.get("created_by_name"),
     }
 
 
@@ -73,11 +113,13 @@ def handler(event: dict, context) -> dict:
             body = json.loads(event.get("body") or "{}")
             new_id = str(uuid.uuid4())
             today = date.today().isoformat()
+            user_id, user_name = get_user_from_event(event)
             cur.execute(
                 f"""INSERT INTO {SCHEMA}.trees
                    (id,lat,lng,name,species,diameter,height,count,age,
-                    status,condition,life_status,description,photo_url,created_at,updated_at)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    status,condition,life_status,description,photo_url,created_at,updated_at,
+                    created_by_id,created_by_name)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     new_id,
                     body["lat"], body["lng"], body["name"], body["species"],
@@ -87,6 +129,7 @@ def handler(event: dict, context) -> dict:
                     body.get("lifeStatus", "alive"),
                     body.get("description"), body.get("photoUrl"),
                     today, today,
+                    user_id, user_name,
                 ),
             )
             conn.commit()
