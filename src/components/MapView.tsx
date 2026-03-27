@@ -225,6 +225,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
     const clusterGroup = L.markerClusterGroup({
       maxClusterRadius: 60,
+      disableClusteringAtZoom: 18,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
