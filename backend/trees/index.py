@@ -13,7 +13,7 @@ import psycopg2.extras
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Auth-Token",
 }
 
 SCHEMA = "t_p59085732_tree_inventory_map"
@@ -42,7 +42,13 @@ def verify_token(token: str):
 
 def get_user_from_event(event: dict):
     """Возвращает (user_id, user_name) из токена авторизации, или (None, None)."""
-    auth = event.get("headers", {}).get("Authorization") or event.get("headers", {}).get("authorization") or ""
+    headers = event.get("headers", {})
+    auth = (
+        headers.get("X-Authorization") or
+        headers.get("X-Auth-Token") or
+        headers.get("Authorization") or
+        headers.get("authorization") or ""
+    )
     token = auth.replace("Bearer ", "").strip()
     if not token:
         return None, None

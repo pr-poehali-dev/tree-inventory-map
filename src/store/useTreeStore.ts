@@ -26,7 +26,7 @@ export function useTreeStore() {
     const token = localStorage.getItem('tree_auth_token') || '';
     const res = await fetch(TREES_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
       body: JSON.stringify(tree),
     });
     const newTree: TreeMarker = await res.json();
