@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { TreeMarker, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types/tree';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 
 export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
   const statusColor = STATUS_COLORS[tree.status];
+  const [confirm, setConfirm] = useState(false);
 
   return (
     <div className="p-3 min-w-[240px] font-sans">
@@ -79,6 +81,26 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
         </div>
       )}
 
+      {confirm && (
+        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-xs text-red-700 font-medium mb-2">Удалить это дерево?</p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setConfirm(false)}
+              className="flex-1 text-xs py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors font-medium"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={() => onDelete(tree.id)}
+              className="flex-1 text-xs py-1.5 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors font-medium"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-1.5 pt-1 border-t border-gray-100">
         <button
           onClick={() => onEdit(tree)}
@@ -93,7 +115,7 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
           📋 Детали
         </button>
         <button
-          onClick={() => onDelete(tree.id)}
+          onClick={() => setConfirm(true)}
           className="text-xs px-2 py-1.5 rounded-md border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
         >
           🗑
