@@ -48,9 +48,11 @@ export function useTreeStore() {
   }, [trees]);
 
   const deleteTree = useCallback(async (id: string) => {
-    setTrees(prev => prev.filter(t => t.id !== id));
     setSelectedTreeId(prev => (prev === id ? null : prev));
     await fetch(`${TREES_URL}?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(TREES_URL);
+    const data = await res.json();
+    if (Array.isArray(data)) setTrees(data);
   }, []);
 
   const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
