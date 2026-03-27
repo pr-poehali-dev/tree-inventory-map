@@ -18,10 +18,14 @@ export function useAuth() {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) { setLoading(false); return; }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     fetch(AUTH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'me', token }),
+      signal: controller.signal,
     })
       .then(r => r.json())
       .then(data => {
@@ -29,7 +33,7 @@ export function useAuth() {
         else localStorage.removeItem(TOKEN_KEY);
       })
       .catch(() => localStorage.removeItem(TOKEN_KEY))
-      .finally(() => setLoading(false));
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
   }, []);
 
   const login = async (email: string, password: string): Promise<string | null> => {
