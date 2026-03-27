@@ -91,29 +91,53 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
     }
   }, [open, initialData?.id, lat, lng]);
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxWidth = 1200, quality = 0.82): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = ev => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('canvas ctx')); return; }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      const dataUrl = ev.target?.result as string;
+    if (fileRef.current) fileRef.current.value = '';
+    setPhotoUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
       setPhotoUrl(dataUrl);
-      setPhotoUploading(true);
-      try {
-        const res = await fetch(UPLOAD_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: dataUrl }),
-        });
-        const json = await res.json();
-        if (json.url) setPhotoUrl(json.url);
-      } catch {
-        // оставляем base64 как fallback
-      } finally {
-        setPhotoUploading(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      const res = await fetch(UPLOAD_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const json = await res.json();
+      if (json.url) setPhotoUrl(json.url);
+    } catch {
+      // оставляем base64 как fallback
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   const handleSubmit = () => {
