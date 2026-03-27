@@ -127,6 +127,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [geoFollow, setGeoFollow] = useState(false);
   const [geoPos, setGeoPos] = useState<{ lat: number; lng: number } | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [layerOpen, setLayerOpen] = useState(false);
 
 
   const geoIcon = L.divIcon({
@@ -470,23 +471,33 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       </div>
 
       {/* Layer switcher */}
-      <div className="absolute top-16 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex">
-        {(Object.entries(LAYERS) as [MapLayer, { label: string; icon: string }][]).map(([key, val]) => (
-          <button
-            key={key}
-            onClick={() => setActiveLayer(key)}
-            className={`
-              flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all
-              ${activeLayer === key
-                ? 'bg-[var(--forest-mid)] text-white'
-                : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
-              }
-            `}
-          >
-            <span>{val.icon}</span>
-            <span>{val.label}</span>
-          </button>
-        ))}
+      <div className="absolute top-16 right-4 z-[1000] flex flex-col items-end gap-1">
+        <button
+          onClick={() => setLayerOpen(v => !v)}
+          title="Слои карты"
+          className={`w-11 h-11 flex items-center justify-center rounded-xl shadow-lg text-lg transition-all active:scale-95
+            ${layerOpen ? 'bg-[var(--forest-mid)] text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
+        >
+          🗂
+        </button>
+        {layerOpen && (
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex flex-col">
+            {(Object.entries(LAYERS) as [MapLayer, { label: string; icon: string }][]).map(([key, val]) => (
+              <button
+                key={key}
+                onClick={() => { setActiveLayer(key); setLayerOpen(false); }}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all
+                  ${activeLayer === key
+                    ? 'bg-[var(--forest-mid)] text-white'
+                    : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
+                  }`}
+              >
+                <span>{val.icon}</span>
+                <span>{val.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Zoom controls */}
