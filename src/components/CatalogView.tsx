@@ -34,7 +34,7 @@ export default function CatalogView({
   setFilterStatus,
   isGuest = false,
 }: Props) {
-  const [sortBy, setSortBy] = useState<'name' | 'diameter' | 'height' | 'age' | 'date'>('name');
+  const [sortBy, setSortBy] = useState<'number' | 'name' | 'diameter' | 'height' | 'age' | 'date'>('number');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -46,6 +46,7 @@ export default function CatalogView({
   });
 
   const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'number') return (a.number ?? 0) - (b.number ?? 0);
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'date') return b.createdAt.localeCompare(a.createdAt);
     return (b[sortBy] ?? 0) - (a[sortBy] ?? 0);
@@ -100,6 +101,7 @@ export default function CatalogView({
               <SelectValue placeholder="Сортировка" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="number">По номеру</SelectItem>
               <SelectItem value="name">По названию</SelectItem>
               <SelectItem value="date">По дате</SelectItem>
               <SelectItem value="diameter">По диаметру</SelectItem>

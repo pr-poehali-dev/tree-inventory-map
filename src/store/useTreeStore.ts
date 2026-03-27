@@ -30,7 +30,7 @@ export function useTreeStore() {
       body: JSON.stringify(tree),
     });
     const newTree: TreeMarker = await res.json();
-    setTrees(prev => [newTree, ...prev]);
+    setTrees(prev => [...prev, newTree]);
     return newTree;
   }, []);
 
