@@ -40,8 +40,11 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const [address, setAddress] = useState(initialData?.address ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl ?? '');
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const UPLOAD_URL = 'https://functions.poehali.dev/1e1ccb94-3105-4500-95aa-0902c3e7a44f';
 
   useEffect(() => {
     if (open) {
@@ -92,7 +95,24 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => setPhotoUrl(ev.target?.result as string);
+    reader.onload = async ev => {
+      const dataUrl = ev.target?.result as string;
+      setPhotoUrl(dataUrl);
+      setPhotoUploading(true);
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl }),
+        });
+        const json = await res.json();
+        if (json.url) setPhotoUrl(json.url);
+      } catch {
+        // оставляем base64 как fallback
+      } finally {
+        setPhotoUploading(false);
+      }
+    };
     reader.readAsDataURL(file);
   };
 
@@ -337,12 +357,19 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
                   alt="preview"
                   className="w-full h-40 object-cover rounded-lg border border-[var(--forest-light)]/30"
                 />
-                <button
-                  onClick={() => setPhotoUrl('')}
-                  className="absolute top-2 right-2 bg-white/90 rounded-full p-1 hover:bg-white"
-                >
-                  <Icon name="X" size={14} className="text-red-500" />
-                </button>
+                {photoUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
+                    <Icon name="Loader" size={24} className="text-white animate-spin" />
+                  </div>
+                )}
+                {!photoUploading && (
+                  <button
+                    onClick={() => setPhotoUrl('')}
+                    className="absolute top-2 right-2 bg-white/90 rounded-full p-1 hover:bg-white"
+                  >
+                    <Icon name="X" size={14} className="text-red-500" />
+                  </button>
+                )}
               </div>
             ) : (
               <button
@@ -361,7 +388,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
           <Button variant="outline" onClick={onClose} className="flex-1">Отмена</Button>
           <Button
             onClick={handleSubmit}
-            disabled={!name.trim()}
+            disabled={!name.trim() || photoUploading}
             className="flex-1 bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] text-white"
           >
             <Icon name="Save" size={16} className="mr-1" />
