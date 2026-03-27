@@ -17,7 +17,7 @@ CORS = {
 }
 
 SCHEMA = "t_p59085732_tree_inventory_map"
-SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
+SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
 
 
 def get_conn():
@@ -82,6 +82,7 @@ def fmt(row):
         "status": d["status"],
         "condition": d["condition"],
         "lifeStatus": d["life_status"],
+        "address": d.get("address"),
         "description": d["description"],
         "photoUrl": d["photo_url"],
         "createdAt": d["created_at"],
@@ -123,9 +124,9 @@ def handler(event: dict, context) -> dict:
             cur.execute(
                 f"""INSERT INTO {SCHEMA}.trees
                    (id,lat,lng,name,species,diameter,height,count,age,
-                    status,condition,life_status,description,photo_url,created_at,updated_at,
+                    status,condition,life_status,address,description,photo_url,created_at,updated_at,
                     created_by_id,created_by_name)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     new_id,
                     body["lat"], body["lng"], body["name"], body["species"],
@@ -133,7 +134,7 @@ def handler(event: dict, context) -> dict:
                     body.get("count", 1), body.get("age"),
                     body.get("status", "good"), body.get("condition", "healthy"),
                     body.get("lifeStatus", "alive"),
-                    body.get("description"), body.get("photoUrl"),
+                    body.get("address"), body.get("description"), body.get("photoUrl"),
                     today, today,
                     user_id, user_name,
                 ),
@@ -151,7 +152,7 @@ def handler(event: dict, context) -> dict:
                 f"""UPDATE {SCHEMA}.trees SET
                    lat=%s,lng=%s,name=%s,species=%s,diameter=%s,height=%s,
                    count=%s,age=%s,status=%s,condition=%s,life_status=%s,
-                   description=%s,photo_url=%s,updated_at=%s
+                   address=%s,description=%s,photo_url=%s,updated_at=%s
                    WHERE id=%s""",
                 (
                     body["lat"], body["lng"], body["name"], body["species"],
@@ -159,7 +160,7 @@ def handler(event: dict, context) -> dict:
                     body.get("count", 1), body.get("age"),
                     body.get("status", "good"), body.get("condition", "healthy"),
                     body.get("lifeStatus", "alive"),
-                    body.get("description"), body.get("photoUrl"),
+                    body.get("address"), body.get("description"), body.get("photoUrl"),
                     today, tree_id,
                 ),
             )
