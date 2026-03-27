@@ -34,11 +34,20 @@ export default function CatalogView({
   setFilterStatus,
   isGuest = false,
 }: Props) {
-  const [sortBy, setSortBy] = useState<'name' | 'diameter' | 'height' | 'age'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'diameter' | 'height' | 'age' | 'date'>('name');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
-  const sorted = [...trees].sort((a, b) => {
+  const filtered = trees.filter(tree => {
+    if (dateFrom && tree.createdAt < dateFrom) return false;
+    if (dateTo && tree.createdAt > dateTo) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
+    if (sortBy === 'date') return b.createdAt.localeCompare(a.createdAt);
     return (b[sortBy] ?? 0) - (a[sortBy] ?? 0);
   });
 
@@ -92,14 +101,39 @@ export default function CatalogView({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="name">По названию</SelectItem>
+              <SelectItem value="date">По дате</SelectItem>
               <SelectItem value="diameter">По диаметру</SelectItem>
               <SelectItem value="height">По высоте</SelectItem>
               <SelectItem value="age">По возрасту</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Icon name="CalendarDays" size={14} className="text-[var(--stone)] shrink-0" />
+          <span className="text-xs text-[var(--stone)] shrink-0">Дата добавления:</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="flex-1 h-8 px-2 text-xs border border-[var(--forest-light)]/40 rounded-md bg-white focus:outline-none focus:border-[var(--forest-mid)]"
+          />
+          <span className="text-xs text-[var(--stone)]">—</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="flex-1 h-8 px-2 text-xs border border-[var(--forest-light)]/40 rounded-md bg-white focus:outline-none focus:border-[var(--forest-mid)]"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[var(--stone)] hover:text-red-400 transition-colors">
+              <Icon name="X" size={14} />
+            </button>
+          )}
+        </div>
+
         <div className="text-xs text-[var(--stone)]">
-          Найдено: <span className="font-semibold text-[var(--forest-mid)]">{trees.length}</span> объектов
+          Найдено: <span className="font-semibold text-[var(--forest-mid)]">{sorted.length}</span> объектов
         </div>
       </div>
 
@@ -182,6 +216,10 @@ export default function CatalogView({
                     <span>{tree.createdByName}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[var(--stone)]/70">
+                  <Icon name="CalendarDays" size={10} className="shrink-0" />
+                  <span>{new Date(tree.createdAt).toLocaleDateString('ru-RU')}</span>
+                </div>
               </div>
             </div>
 
