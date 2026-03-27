@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS } from '@/types/tree';
 import TreePopup from './TreePopup';
@@ -110,6 +111,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   const geoMarkerRef = useRef<L.Marker | null>(null);
@@ -221,7 +223,38 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     tile.addTo(map);
     tileLayerRef.current = tile;
 
-    // zoom control handled by custom React buttons
+    const clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 60,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        let size = 36;
+        let bg = '#2d6a4f';
+        if (count >= 50) { size = 52; bg = '#1a3a2a'; }
+        else if (count >= 20) { size = 44; bg = '#40916c'; }
+        else if (count >= 10) { size = 40; bg = '#52b788'; }
+        return L.divIcon({
+          html: `<div style="
+            width:${size}px;height:${size}px;
+            background:${bg};
+            border:3px solid white;
+            border-radius:50%;
+            box-shadow:0 3px 12px rgba(0,0,0,0.3);
+            display:flex;align-items:center;justify-content:center;
+            color:white;font-weight:700;font-size:${size > 40 ? 14 : 12}px;
+            font-family:sans-serif;
+          ">${count}</div>`,
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+      },
+    });
+    clusterGroup.addTo(map);
+    clusterGroupRef.current = clusterGroup;
+
     mapRef.current = map;
 
     return () => {
@@ -290,14 +323,16 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    const clusterGroup = clusterGroupRef.current;
+    if (!map || !clusterGroup) return;
 
     const currentIds = new Set(trees.map(t => t.id));
     const existingIds = new Set(markersRef.current.keys());
 
     existingIds.forEach(id => {
       if (!currentIds.has(id)) {
-        markersRef.current.get(id)?.remove();
+        const m = markersRef.current.get(id);
+        if (m) clusterGroup.removeLayer(m);
         markersRef.current.delete(id);
       }
     });
@@ -315,7 +350,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           <TreePopup tree={tree} onEdit={onEdit} onDelete={onDelete} onSelect={onSelect} />
         );
         marker.bindPopup(L.popup({ maxWidth: 280, minWidth: 240 }).setContent(popupDiv));
-        marker.addTo(map);
+        clusterGroup.addLayer(marker);
         markersRef.current.set(tree.id, marker);
       }
     });
