@@ -175,6 +175,14 @@ def handler(event: dict, context) -> dict:
             if not tree_id:
                 return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}
             cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
+            cur.execute(f"""
+                WITH ranked AS (
+                    SELECT id, ROW_NUMBER() OVER (ORDER BY number ASC) AS new_num
+                    FROM {SCHEMA}.trees
+                )
+                UPDATE {SCHEMA}.trees t SET number = r.new_num
+                FROM ranked r WHERE t.id = r.id
+            """)
             conn.commit()
             return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
 
