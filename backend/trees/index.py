@@ -121,14 +121,16 @@ def handler(event: dict, context) -> dict:
             new_id = str(uuid.uuid4())
             today = date.today().isoformat()
             user_id, user_name = get_user_from_event(event)
+            cur.execute(f"SELECT COALESCE(MAX(number), 0) + 1 AS next_num FROM {SCHEMA}.trees")
+            next_num = cur.fetchone()["next_num"]
             cur.execute(
                 f"""INSERT INTO {SCHEMA}.trees
-                   (id,lat,lng,name,species,diameter,height,count,age,
+                   (id,number,lat,lng,name,species,diameter,height,count,age,
                     status,condition,life_status,address,description,photo_url,created_at,updated_at,
                     created_by_id,created_by_name)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
-                    new_id,
+                    new_id, next_num,
                     body["lat"], body["lng"], body["name"], body["species"],
                     body.get("diameter", 20), body.get("height", 8),
                     body.get("count", 1), body.get("age"),
