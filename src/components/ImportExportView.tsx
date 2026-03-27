@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import proj4 from 'proj4';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { TreeMarker } from '@/types/tree';
+import { TreeMarker, STATUS_LABELS, CONDITION_LABELS, LIFE_STATUS_LABELS } from '@/types/tree';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // МСК-167 → WGS84   (точное преобразование через proj4)
@@ -91,10 +91,15 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
   };
 
   const exportCSV = () => {
-    const headers = ['№','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Адрес','Широта','Долгота','Дата'];
-    const rows    = trees.map((t, i) => [
+    const headers = ['№','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Жизненное состояние','Жизнеспособность','Адрес','Широта','Долгота','Дата'];
+    const sorted  = [...trees].sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
+    const rows    = sorted.map((t, i) => [
       t.number ?? (i + 1), t.name, t.species, t.diameter, t.height, t.count,
-      t.age ?? '', t.status, t.address ?? '', t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
+      t.age ?? '',
+      STATUS_LABELS[t.status] ?? t.status,
+      CONDITION_LABELS[t.condition] ?? t.condition,
+      LIFE_STATUS_LABELS[t.lifeStatus] ?? t.lifeStatus,
+      t.address ?? '', t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
     ]);
     const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -115,7 +120,7 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
         Диаметр: ${t.diameter} см<br/>
         Высота: ${t.height} м<br/>
         Количество: ${t.count} шт<br/>
-        Состояние: ${t.status}<br/>
+        Состояние: ${STATUS_LABELS[t.status] ?? t.status}<br/>
         ${t.description ? `Примечание: ${t.description}` : ''}
       ]]></description>
       <Point><coordinates>${t.lng},${t.lat},0</coordinates></Point>
