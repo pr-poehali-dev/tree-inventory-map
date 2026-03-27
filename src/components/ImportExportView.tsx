@@ -91,7 +91,7 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
   };
 
   const exportCSV = () => {
-    const headers = ['№','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Жизненное состояние','Жизнеспособность','Адрес','Широта','Долгота','Дата'];
+    const headers = ['№','Название','Порода','Диаметр (см)','Высота (м)','Количество','Возраст','Состояние','Жизненное состояние','Жизнеспособность','Адрес','Широта','Долгота','Дата','Примечание'];
     const sorted  = [...trees].sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
     const rows    = sorted.map((t, i) => [
       t.number ?? (i + 1), t.name, t.species, t.diameter, t.height, t.count,
@@ -100,6 +100,7 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
       CONDITION_LABELS[t.condition] ?? t.condition,
       LIFE_STATUS_LABELS[t.lifeStatus] ?? t.lifeStatus,
       t.address ?? '', t.lat.toFixed(6), t.lng.toFixed(6), t.createdAt,
+      t.description ?? '',
     ]);
     const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
