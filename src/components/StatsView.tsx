@@ -1,15 +1,16 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TreeMarker, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
+import { TreeMarker, HedgeRow, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
 import Icon from '@/components/ui/icon';
 
 interface Props {
   trees: TreeMarker[];
+  hedges?: HedgeRow[];
 }
 
 const COLORS_CHART = ['#2d6a4f', '#52b788', '#95d5b2', '#d4a017', '#8b5e3c', '#c0392b', '#6b7c6e', '#1a3a2a'];
 
-export default function StatsView({ trees }: Props) {
+export default function StatsView({ trees, hedges = [] }: Props) {
   const stats = useMemo(() => {
     const total = trees.reduce((s, t) => s + t.count, 0);
     const totalArea = trees.length;
@@ -36,6 +37,17 @@ export default function StatsView({ trees }: Props) {
 
     return { total, totalArea, avgDiameter, avgHeight, byStatus, bySpecies, emergency, bad };
   }, [trees]);
+
+  const hedgeStats = useMemo(() => {
+    const count = hedges.length;
+    const totalLength = hedges.reduce((s, h) => s + (h.lengthM ?? 0), 0);
+    const byStatus = Object.entries(STATUS_LABELS).map(([key, label]) => ({
+      name: label,
+      value: hedges.filter(h => h.status === key).length,
+      color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
+    })).filter(d => d.value > 0);
+    return { count, totalLength, byStatus };
+  }, [hedges]);
 
   const metrics = [
     { label: 'Всего деревьев', value: stats.total, icon: 'TreePine', color: 'text-[var(--forest-mid)]', bg: 'bg-[var(--forest-pale)]' },
@@ -101,6 +113,41 @@ export default function StatsView({ trees }: Props) {
           </PieChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Hedgerows block */}
+      {hedgeStats.count > 0 && (
+        <div className="bg-white rounded-xl border border-[var(--border)] p-4 space-y-3">
+          <div className="font-semibold text-[var(--forest-dark)] font-heading text-sm flex items-center gap-2">
+            🌿 Живые изгороди
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-green-50 rounded-lg p-3">
+              <div className="text-2xl font-bold font-heading text-green-700">{hedgeStats.count}</div>
+              <div className="text-xs text-[var(--stone)] mt-0.5">Объектов</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-3">
+              <div className="text-2xl font-bold font-heading text-green-700">
+                {hedgeStats.totalLength >= 1000
+                  ? `${(hedgeStats.totalLength / 1000).toFixed(2)} км`
+                  : `${hedgeStats.totalLength.toFixed(0)} м`}
+              </div>
+              <div className="text-xs text-[var(--stone)] mt-0.5">Суммарная длина</div>
+            </div>
+          </div>
+          {hedgeStats.byStatus.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-xs font-semibold text-[var(--stone)]">По состоянию</div>
+              {hedgeStats.byStatus.map(s => (
+                <div key={s.name} className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+                  <div className="text-xs text-gray-600 flex-1">{s.name}</div>
+                  <div className="text-xs font-semibold text-[var(--forest-dark)]">{s.value} шт</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Species chart */}
       <div className="bg-white rounded-xl border border-[var(--border)] p-4">

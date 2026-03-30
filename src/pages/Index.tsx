@@ -278,7 +278,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 <div className="font-semibold text-[var(--forest-dark)] font-heading">Статистика</div>
                 <div className="text-xs text-[var(--stone)]">По всем объектам учёта</div>
               </div>
-              <StatsView trees={store.trees} />
+              <StatsView trees={store.trees} hedges={hedgeStore.hedges} />
             </div>
           )}
 
