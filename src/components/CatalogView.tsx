@@ -12,7 +12,7 @@ interface Props {
   onSelect: (id: string) => void;
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
-  onDeleteBefore?: (date: string) => Promise<void>;
+  onDeleteBefore?: (fromDate: string, toDate: string) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   filterSpecies: string;
@@ -40,7 +40,8 @@ export default function CatalogView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [bulkDeleteDate, setBulkDeleteDate] = useState('');
+  const [bulkDeleteFrom, setBulkDeleteFrom] = useState('');
+  const [bulkDeleteTo, setBulkDeleteTo] = useState('');
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
@@ -49,6 +50,12 @@ export default function CatalogView({
     if (dateTo && tree.createdAt > dateTo) return false;
     return true;
   });
+
+  const bulkDeleteCount = trees.filter(t => {
+    if (bulkDeleteFrom && t.createdAt < bulkDeleteFrom) return false;
+    if (bulkDeleteTo && t.createdAt > bulkDeleteTo) return false;
+    return true;
+  }).length;
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'number') return (a.number ?? 0) - (b.number ?? 0);
@@ -146,21 +153,38 @@ export default function CatalogView({
         </div>
 
         {!isGuest && onDeleteBefore && (
-          <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
-            <Icon name="Trash2" size={14} className="text-red-400 shrink-0" />
-            <span className="text-xs text-[var(--stone)] shrink-0">Удалить до:</span>
-            <input
-              type="date"
-              value={bulkDeleteDate}
-              onChange={e => setBulkDeleteDate(e.target.value)}
-              className="flex-1 h-8 px-2 text-xs border border-red-200 rounded-md bg-white focus:outline-none focus:border-red-400"
-            />
+          <div className="pt-1 border-t border-[var(--border)] space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Icon name="Trash2" size={13} className="text-red-400 shrink-0" />
+              <span className="text-xs font-medium text-red-500">Удалить за период:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--stone)] shrink-0">с</span>
+              <input
+                type="date"
+                value={bulkDeleteFrom}
+                onChange={e => setBulkDeleteFrom(e.target.value)}
+                className="flex-1 h-8 px-2 text-xs border border-red-200 rounded-md bg-white focus:outline-none focus:border-red-400"
+              />
+              <span className="text-xs text-[var(--stone)] shrink-0">по</span>
+              <input
+                type="date"
+                value={bulkDeleteTo}
+                onChange={e => setBulkDeleteTo(e.target.value)}
+                className="flex-1 h-8 px-2 text-xs border border-red-200 rounded-md bg-white focus:outline-none focus:border-red-400"
+              />
+              {(bulkDeleteFrom || bulkDeleteTo) && (
+                <button onClick={() => { setBulkDeleteFrom(''); setBulkDeleteTo(''); }} className="text-[var(--stone)] hover:text-red-400 transition-colors shrink-0">
+                  <Icon name="X" size={13} />
+                </button>
+              )}
+            </div>
             <button
-              disabled={!bulkDeleteDate}
+              disabled={!bulkDeleteFrom && !bulkDeleteTo}
               onClick={() => setConfirmBulkDelete(true)}
-              className="shrink-0 h-8 px-3 text-xs font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-colors"
+              className="w-full h-8 text-xs font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-colors"
             >
-              Удалить {bulkDeleteDate ? `(${trees.filter(t => t.createdAt <= bulkDeleteDate).length})` : ''}
+              {(bulkDeleteFrom || bulkDeleteTo) ? `Удалить ${bulkDeleteCount} деревьев` : 'Выберите период'}
             </button>
           </div>
         )}
@@ -281,7 +305,10 @@ export default function CatalogView({
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-[var(--stone)] pb-2">
-            Будет удалено <span className="font-bold text-red-500">{trees.filter(t => t.createdAt <= bulkDeleteDate).length}</span> деревьев, добавленных до <span className="font-semibold">{bulkDeleteDate ? new Date(bulkDeleteDate).toLocaleDateString('ru-RU') : ''}</span>. Это действие необратимо.
+            Будет удалено <span className="font-bold text-red-500">{bulkDeleteCount}</span> деревьев
+            {bulkDeleteFrom && <> с <span className="font-semibold">{new Date(bulkDeleteFrom).toLocaleDateString('ru-RU')}</span></>}
+            {bulkDeleteTo && <> по <span className="font-semibold">{new Date(bulkDeleteTo).toLocaleDateString('ru-RU')}</span></>}.
+            {' '}Это действие необратимо.
           </p>
           <div className="flex gap-2 justify-end">
             <button
@@ -296,10 +323,11 @@ export default function CatalogView({
               onClick={async () => {
                 if (!onDeleteBefore) return;
                 setBulkDeleting(true);
-                await onDeleteBefore(bulkDeleteDate);
+                await onDeleteBefore(bulkDeleteFrom, bulkDeleteTo);
                 setBulkDeleting(false);
                 setConfirmBulkDelete(false);
-                setBulkDeleteDate('');
+                setBulkDeleteFrom('');
+                setBulkDeleteTo('');
               }}
               className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
             >

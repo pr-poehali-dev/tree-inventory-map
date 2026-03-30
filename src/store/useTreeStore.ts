@@ -55,8 +55,12 @@ export function useTreeStore() {
     if (Array.isArray(data)) setTrees(data);
   }, []);
 
-  const deleteTreesBefore = useCallback(async (beforeDate: string) => {
-    const toDelete = trees.filter(t => t.createdAt <= beforeDate);
+  const deleteTreesBefore = useCallback(async (fromDate: string, toDate: string) => {
+    const toDelete = trees.filter(t => {
+      if (fromDate && t.createdAt < fromDate) return false;
+      if (toDate && t.createdAt > toDate) return false;
+      return true;
+    });
     for (const tree of toDelete) {
       setSelectedTreeId(prev => (prev === tree.id ? null : prev));
       await fetch(`${TREES_URL}?id=${tree.id}`, { method: 'DELETE' });
