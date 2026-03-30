@@ -1,21 +1,25 @@
 import { useState, useCallback } from 'react';
 import MapView from '@/components/MapView';
 import CatalogView from '@/components/CatalogView';
+import HedgeCatalogView from '@/components/HedgeCatalogView';
 import StatsView from '@/components/StatsView';
 import ImportExportView from '@/components/ImportExportView';
 import HelpView from '@/components/HelpView';
 import AdminView from '@/components/AdminView';
 import TreeFormDialog from '@/components/TreeFormDialog';
+import HedgeFormDialog from '@/components/HedgeFormDialog';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
-import { TreeMarker } from '@/types/tree';
+import { useHedgeStore } from '@/store/useHedgeStore';
+import { TreeMarker, HedgeRow } from '@/types/tree';
 import { User } from '@/hooks/useAuth';
 
-type Tab = 'map' | 'catalog' | 'stats' | 'import' | 'help' | 'admin';
+type Tab = 'map' | 'catalog' | 'hedges' | 'stats' | 'import' | 'help' | 'admin';
 
 const TABS: { id: Tab; label: string; icon: string; short: string; adminOnly?: boolean }[] = [
   { id: 'map', label: 'Карта', icon: 'Map', short: 'Карта' },
   { id: 'catalog', label: 'Каталог', icon: 'List', short: 'Каталог' },
+  { id: 'hedges', label: 'Живые изгороди', icon: 'Minus', short: 'Изгороди' },
   { id: 'stats', label: 'Статистика', icon: 'BarChart2', short: 'Стат.' },
   { id: 'import', label: 'Импорт / Экспорт', icon: 'ArrowLeftRight', short: 'И/Э' },
   { id: 'help', label: 'Справка', icon: 'HelpCircle', short: 'Справка' },
@@ -38,6 +42,12 @@ export default function Index({ user, onLogout }: IndexProps) {
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
   const store = useTreeStore();
+  const hedgeStore = useHedgeStore();
+
+  const [hedgeFormOpen, setHedgeFormOpen] = useState(false);
+  const [editingHedge, setEditingHedge] = useState<HedgeRow | null>(null);
+  const [pendingHedgePoints, setPendingHedgePoints] = useState<[number, number][]>([]);
+  const [pendingHedgeLength, setPendingHedgeLength] = useState<number | null>(null);
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPendingLatLng({ lat, lng });
@@ -71,6 +81,39 @@ export default function Index({ user, onLogout }: IndexProps) {
       setActiveTab('map');
     },
     [store]
+  );
+
+  const handleHedgeDrawn = useCallback((points: [number, number][], lengthM: number) => {
+    setPendingHedgePoints(points);
+    setPendingHedgeLength(lengthM);
+    setEditingHedge(null);
+    setHedgeFormOpen(true);
+  }, []);
+
+  const handleHedgeEdit = useCallback((hedge: HedgeRow) => {
+    setEditingHedge(hedge);
+    setHedgeFormOpen(true);
+  }, []);
+
+  const handleHedgeSave = useCallback(
+    (data: Omit<HedgeRow, 'id' | 'number' | 'createdAt' | 'updatedAt'>) => {
+      if (editingHedge) {
+        hedgeStore.updateHedge(editingHedge.id, data);
+      } else {
+        hedgeStore.addHedge(data);
+      }
+      setHedgeFormOpen(false);
+      setEditingHedge(null);
+    },
+    [editingHedge, hedgeStore]
+  );
+
+  const handleSelectHedge = useCallback(
+    (id: string) => {
+      hedgeStore.setSelectedHedgeId(id);
+      setActiveTab('map');
+    },
+    [hedgeStore]
   );
 
   const total = store.trees.reduce((s, t) => s + t.count, 0);
@@ -186,6 +229,11 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onSelect={store.setSelectedTreeId}
                 selectedTreeId={store.selectedTreeId}
                 isGuest={!isEditor}
+                hedges={hedgeStore.hedges}
+                onHedgeDrawn={isEditor ? handleHedgeDrawn : undefined}
+                onHedgeEdit={isEditor ? handleHedgeEdit : undefined}
+                onHedgeDelete={isEditor ? hedgeStore.deleteHedge : undefined}
+                selectedHedgeId={hedgeStore.selectedHedgeId}
               />
             </div>
           )}
@@ -203,6 +251,22 @@ export default function Index({ user, onLogout }: IndexProps) {
                 setFilterSpecies={store.setFilterSpecies}
                 filterStatus={store.filterStatus}
                 setFilterStatus={store.setFilterStatus}
+                isGuest={!isEditor}
+              />
+            </div>
+          )}
+
+          {activeTab === 'hedges' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-[var(--border)] bg-white/60">
+                <div className="font-semibold text-[var(--forest-dark)] font-heading">Живые изгороди</div>
+                <div className="text-xs text-[var(--stone)]">Линейные объекты озеленения</div>
+              </div>
+              <HedgeCatalogView
+                hedges={hedgeStore.hedges}
+                onSelect={handleSelectHedge}
+                onEdit={isEditor ? handleHedgeEdit : () => {}}
+                onDelete={isEditor ? hedgeStore.deleteHedge : () => {}}
                 isGuest={!isEditor}
               />
             </div>
@@ -278,6 +342,16 @@ export default function Index({ user, onLogout }: IndexProps) {
         initialData={editingTree ?? undefined}
         lat={pendingLatLng?.lat}
         lng={pendingLatLng?.lng}
+      />
+
+      {/* Hedge form dialog */}
+      <HedgeFormDialog
+        open={hedgeFormOpen}
+        onClose={() => { setHedgeFormOpen(false); setEditingHedge(null); }}
+        onSave={handleHedgeSave}
+        points={pendingHedgePoints}
+        lengthM={pendingHedgeLength}
+        editing={editingHedge}
       />
     </div>
   );

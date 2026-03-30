@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "GET all hedgerows",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "any"
+    }
+  ]
+}

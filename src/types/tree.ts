@@ -139,3 +139,44 @@ export const CONDITION_LABELS: Record<TreeCondition, string> = {
   dying: 'Усыхающее',
   dead: 'Погибшее',
 };
+
+export interface HedgeRow {
+  id: string;
+  number: number;
+  name: string;
+  points: [number, number][];
+  lengthM: number | null;
+  species: string;
+  status: TreeStatus;
+  condition: TreeCondition;
+  address?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: number;
+  createdByName?: string;
+}
+
+export const HEDGE_COLOR = '#1a7a2e';
+export const HEDGE_SPECIES_LIST = [
+  'Живая изгородь',
+  'Сирень обыкновенная',
+  'Сирень венгерская',
+  'Акация жёлтая (карагана)',
+  'Жимолость татарская',
+  'Боярышник кроваво-красный',
+  'Боярышник сибирский',
+  'Шиповник майский',
+  'Шиповник морщинистый',
+  'Смородина золотистая',
+  'Смородина чёрная',
+  'Калина обыкновенная',
+  'Спирея средняя',
+  'Спирея иволистная',
+  'Дёрен белый',
+  'Барбарис обыкновенный',
+  'Снежноягодник белый',
+  'Пузыреплодник калинолистный',
+  'Чубушник венечный (жасмин)',
+  'Роза ругоза (морщинистая)',
+];

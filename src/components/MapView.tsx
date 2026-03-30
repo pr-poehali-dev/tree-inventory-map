@@ -5,7 +5,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { createRoot } from 'react-dom/client';
-import { TreeMarker, STATUS_COLORS } from '@/types/tree';
+import { TreeMarker, STATUS_COLORS, HedgeRow, HEDGE_COLOR, STATUS_LABELS, CONDITION_LABELS } from '@/types/tree';
 import TreePopup from './TreePopup';
 import MeasureTool from './MeasureTool';
 
@@ -20,6 +20,11 @@ interface Props {
   onSelect: (id: string) => void;
   selectedTreeId: string | null;
   isGuest?: boolean;
+  hedges?: HedgeRow[];
+  onHedgeDrawn?: (points: [number, number][], lengthM: number) => void;
+  onHedgeEdit?: (hedge: HedgeRow) => void;
+  onHedgeDelete?: (id: string) => void;
+  selectedHedgeId?: string | null;
 }
 
 const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
@@ -110,7 +115,7 @@ function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatu
   });
 }
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -120,7 +125,12 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const geoMarkerRef = useRef<L.Marker | null>(null);
   const geoCircleRef = useRef<L.Circle | null>(null);
   const geoWatchRef = useRef<number | null>(null);
+  const hedgeLayersRef = useRef<Map<string, L.Polyline>>(new Map());
+  const hedgeDrawPointsRef = useRef<[number, number][]>([]);
+  const hedgeDrawLineRef = useRef<L.Polyline | null>(null);
+  const hedgeDrawMarkersRef = useRef<L.CircleMarker[]>([]);
   const [addMode, setAddMode] = useState(false);
+  const [hedgeDrawMode, setHedgeDrawMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
@@ -309,6 +319,44 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
 
 
+  const calcLength = (pts: [number, number][]) => {
+    let dist = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const R = 6371000;
+      const lat1 = pts[i-1][0] * Math.PI / 180;
+      const lat2 = pts[i][0] * Math.PI / 180;
+      const dlat = (pts[i][0] - pts[i-1][0]) * Math.PI / 180;
+      const dlng = (pts[i][1] - pts[i-1][1]) * Math.PI / 180;
+      const a = Math.sin(dlat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlng/2)**2;
+      dist += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    return dist;
+  };
+
+  const finishHedgeDraw = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const pts = hedgeDrawPointsRef.current;
+    if (pts.length >= 2 && onHedgeDrawn) {
+      onHedgeDrawn(pts, calcLength(pts));
+    }
+    hedgeDrawPointsRef.current = [];
+    if (hedgeDrawLineRef.current) { hedgeDrawLineRef.current.remove(); hedgeDrawLineRef.current = null; }
+    hedgeDrawMarkersRef.current.forEach(m => m.remove());
+    hedgeDrawMarkersRef.current = [];
+    setHedgeDrawMode(false);
+  };
+
+  const cancelHedgeDraw = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    hedgeDrawPointsRef.current = [];
+    if (hedgeDrawLineRef.current) { hedgeDrawLineRef.current.remove(); hedgeDrawLineRef.current = null; }
+    hedgeDrawMarkersRef.current.forEach(m => m.remove());
+    hedgeDrawMarkersRef.current = [];
+    setHedgeDrawMode(false);
+  };
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -317,14 +365,39 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       if (addMode) {
         onMapClick(e.latlng.lat, e.latlng.lng);
         setAddMode(false);
+        return;
+      }
+      if (hedgeDrawMode) {
+        const pt: [number, number] = [e.latlng.lat, e.latlng.lng];
+        hedgeDrawPointsRef.current = [...hedgeDrawPointsRef.current, pt];
+        const pts = hedgeDrawPointsRef.current;
+        if (hedgeDrawLineRef.current) {
+          hedgeDrawLineRef.current.setLatLngs(pts);
+        } else {
+          hedgeDrawLineRef.current = L.polyline(pts, { color: HEDGE_COLOR, weight: 4, opacity: 0.9, dashArray: '8,4' }).addTo(map);
+        }
+        const dot = L.circleMarker(pt, { radius: 5, color: HEDGE_COLOR, fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(map);
+        hedgeDrawMarkersRef.current = [...hedgeDrawMarkersRef.current, dot];
+      }
+    };
+
+    const handleDblClick = (e: L.LeafletMouseEvent) => {
+      if (hedgeDrawMode) {
+        L.DomEvent.stopPropagation(e);
+        finishHedgeDraw();
       }
     };
 
     map.on('click', handleClick);
-    map.getContainer().style.cursor = addMode ? 'crosshair' : '';
+    map.on('dblclick', handleDblClick);
+    if (hedgeDrawMode) {
+      map.getContainer().style.cursor = 'crosshair';
+    } else {
+      map.getContainer().style.cursor = addMode ? 'crosshair' : '';
+    }
 
-    return () => { map.off('click', handleClick); };
-  }, [addMode, onMapClick]);
+    return () => { map.off('click', handleClick); map.off('dblclick', handleDblClick); };
+  }, [addMode, onMapClick, hedgeDrawMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -371,6 +444,53 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     }
   }, [selectedTreeId]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const currentIds = new Set(hedges.map(h => h.id));
+    hedgeLayersRef.current.forEach((line, id) => {
+      if (!currentIds.has(id)) { line.remove(); hedgeLayersRef.current.delete(id); }
+    });
+
+    hedges.forEach(hedge => {
+      const isSelected = hedge.id === selectedHedgeId;
+      const existing = hedgeLayersRef.current.get(hedge.id);
+      const color = isSelected ? '#0ea5e9' : HEDGE_COLOR;
+      const weight = isSelected ? 6 : 4;
+
+      const popupHtml = `
+        <div style="min-width:200px;font-family:sans-serif;">
+          <div style="font-weight:700;font-size:14px;color:#1a3a2a;margin-bottom:6px;">🌿 №${hedge.number} — ${hedge.name}</div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px;">Вид: ${hedge.species}</div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px;">Состояние: ${STATUS_LABELS[hedge.status]}</div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px;">Жизнеспособность: ${CONDITION_LABELS[hedge.condition]}</div>
+          ${hedge.lengthM ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">Длина: ${hedge.lengthM.toFixed(1)} м</div>` : ''}
+          ${hedge.description ? `<div style="font-size:12px;color:#777;margin-bottom:8px;">${hedge.description}</div>` : ''}
+          ${!isGuest ? `
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button onclick="window.__hedgeEdit('${hedge.id}')" style="flex:1;padding:5px 8px;background:#2d6a4f;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Изменить</button>
+            <button onclick="window.__hedgeDel('${hedge.id}')" style="padding:5px 8px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Удалить</button>
+          </div>` : ''}
+        </div>`;
+
+      if (existing) {
+        existing.setLatLngs(hedge.points);
+        existing.setStyle({ color, weight });
+        existing.bindPopup(popupHtml);
+      } else {
+        const line = L.polyline(hedge.points, { color, weight, opacity: 0.9 }).addTo(map);
+        line.bindPopup(popupHtml);
+        hedgeLayersRef.current.set(hedge.id, line);
+      }
+    });
+  }, [hedges, selectedHedgeId, isGuest]);
+
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__hedgeEdit = (id: string) => { const h = hedges.find(x => x.id === id); if (h && onHedgeEdit) onHedgeEdit(h); };
+    (window as unknown as Record<string, unknown>).__hedgeDel = (id: string) => { if (onHedgeDelete) onHedgeDelete(id); };
+  }, [hedges, onHedgeEdit, onHedgeDelete]);
+
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full rounded-xl overflow-hidden" />
@@ -380,7 +500,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         {!isGuest && (
           <>
             <button
-              onClick={() => setAddMode(m => !m)}
+              onClick={() => { setAddMode(m => !m); if (hedgeDrawMode) cancelHedgeDraw(); }}
               className={`
                 flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
                 ${addMode
@@ -399,6 +519,29 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
               >
                 Отмена
               </button>
+            )}
+            {onHedgeDrawn && (
+              <>
+                <button
+                  onClick={() => { setHedgeDrawMode(m => !m); if (addMode) setAddMode(false); if (hedgeDrawMode) cancelHedgeDraw(); }}
+                  className={`
+                    flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
+                    ${hedgeDrawMode
+                      ? 'bg-green-700 text-white ring-2 ring-green-300'
+                      : 'bg-white text-green-700 hover:bg-green-50'
+                    }
+                  `}
+                >
+                  <span>🌿</span>
+                  {hedgeDrawMode ? 'Ставьте точки...' : 'Живая изгородь'}
+                </button>
+                {hedgeDrawMode && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-800 shadow">
+                    Кликайте точки линии.<br />Двойной клик — завершить.
+                    <button onClick={cancelHedgeDraw} className="block mt-1.5 text-red-500 hover:text-red-700 font-semibold">✕ Отмена</button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -580,6 +723,11 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                 <span className="text-gray-600">{label}</span>
               </div>
             ))}
+            <div className="font-semibold text-[var(--forest-dark)] mt-2 mb-1 font-heading">Линейные объекты</div>
+            <div className="flex items-center gap-2 py-0.5">
+              <div className="w-8 h-1.5 rounded-full shrink-0" style={{ background: HEDGE_COLOR }} />
+              <span className="text-gray-600">Живая изгородь</span>
+            </div>
           </div>
         )}
       </div>
