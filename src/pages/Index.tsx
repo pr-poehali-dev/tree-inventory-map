@@ -245,6 +245,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onSelect={handleSelectTree}
                 onEdit={isEditor ? handleEdit : () => {}}
                 onDelete={isEditor ? store.deleteTree : () => {}}
+                onDeleteBefore={isEditor ? store.deleteTreesBefore : undefined}
                 searchQuery={store.searchQuery}
                 setSearchQuery={store.setSearchQuery}
                 filterSpecies={store.filterSpecies}

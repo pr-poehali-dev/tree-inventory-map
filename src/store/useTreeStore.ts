@@ -55,6 +55,17 @@ export function useTreeStore() {
     if (Array.isArray(data)) setTrees(data);
   }, []);
 
+  const deleteTreesBefore = useCallback(async (beforeDate: string) => {
+    const toDelete = trees.filter(t => t.createdAt <= beforeDate);
+    for (const tree of toDelete) {
+      setSelectedTreeId(prev => (prev === tree.id ? null : prev));
+      await fetch(`${TREES_URL}?id=${tree.id}`, { method: 'DELETE' });
+    }
+    const res = await fetch(TREES_URL);
+    const data = await res.json();
+    if (Array.isArray(data)) setTrees(data);
+  }, [trees]);
+
   const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
     const added: TreeMarker[] = [];
     for (const tree of newTrees) {
@@ -93,6 +104,7 @@ export function useTreeStore() {
     addTree,
     updateTree,
     deleteTree,
+    deleteTreesBefore,
     importTrees,
     filterSpecies,
     setFilterSpecies,

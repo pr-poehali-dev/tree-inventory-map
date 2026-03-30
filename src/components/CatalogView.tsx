@@ -12,6 +12,7 @@ interface Props {
   onSelect: (id: string) => void;
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
+  onDeleteBefore?: (date: string) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   filterSpecies: string;
@@ -26,6 +27,7 @@ export default function CatalogView({
   onSelect,
   onEdit,
   onDelete,
+  onDeleteBefore,
   searchQuery,
   setSearchQuery,
   filterSpecies,
@@ -38,6 +40,9 @@ export default function CatalogView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [bulkDeleteDate, setBulkDeleteDate] = useState('');
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const filtered = trees.filter(tree => {
     if (dateFrom && tree.createdAt < dateFrom) return false;
@@ -134,9 +139,31 @@ export default function CatalogView({
           )}
         </div>
 
-        <div className="text-xs text-[var(--stone)]">
-          Найдено: <span className="font-semibold text-[var(--forest-mid)]">{sorted.length}</span> объектов
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-[var(--stone)]">
+            Найдено: <span className="font-semibold text-[var(--forest-mid)]">{sorted.length}</span> объектов
+          </div>
         </div>
+
+        {!isGuest && onDeleteBefore && (
+          <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
+            <Icon name="Trash2" size={14} className="text-red-400 shrink-0" />
+            <span className="text-xs text-[var(--stone)] shrink-0">Удалить до:</span>
+            <input
+              type="date"
+              value={bulkDeleteDate}
+              onChange={e => setBulkDeleteDate(e.target.value)}
+              className="flex-1 h-8 px-2 text-xs border border-red-200 rounded-md bg-white focus:outline-none focus:border-red-400"
+            />
+            <button
+              disabled={!bulkDeleteDate}
+              onClick={() => setConfirmBulkDelete(true)}
+              className="shrink-0 h-8 px-3 text-xs font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-colors"
+            >
+              Удалить {bulkDeleteDate ? `(${trees.filter(t => t.createdAt <= bulkDeleteDate).length})` : ''}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cards */}
@@ -244,6 +271,44 @@ export default function CatalogView({
           </div>
         ))}
       </div>
+
+      <Dialog open={confirmBulkDelete} onOpenChange={v => !bulkDeleting && setConfirmBulkDelete(v)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--forest-dark)] flex items-center gap-2">
+              <Icon name="Trash2" size={18} className="text-red-500" />
+              Массовое удаление
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[var(--stone)] pb-2">
+            Будет удалено <span className="font-bold text-red-500">{trees.filter(t => t.createdAt <= bulkDeleteDate).length}</span> деревьев, добавленных до <span className="font-semibold">{bulkDeleteDate ? new Date(bulkDeleteDate).toLocaleDateString('ru-RU') : ''}</span>. Это действие необратимо.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button
+              disabled={bulkDeleting}
+              onClick={() => setConfirmBulkDelete(false)}
+              className="px-4 py-2 rounded-lg text-sm text-[var(--forest-dark)] bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 transition-colors font-medium disabled:opacity-50"
+            >
+              Отмена
+            </button>
+            <button
+              disabled={bulkDeleting}
+              onClick={async () => {
+                if (!onDeleteBefore) return;
+                setBulkDeleting(true);
+                await onDeleteBefore(bulkDeleteDate);
+                setBulkDeleting(false);
+                setConfirmBulkDelete(false);
+                setBulkDeleteDate('');
+              }}
+              className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+            >
+              {bulkDeleting && <Icon name="Loader2" size={14} className="animate-spin" />}
+              {bulkDeleting ? 'Удаляю...' : 'Удалить все'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="max-w-sm">
