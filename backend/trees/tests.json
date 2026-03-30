@@ -5,6 +5,13 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200
+    },
+    {
+      "name": "POST single insert returns 201",
+      "method": "POST",
+      "path": "/",
+      "body": {"lat": 53.71, "lng": 91.68, "name": "Тест", "species": "Берёза повислая", "diameter": 20, "height": 8, "count": 1, "status": "good", "condition": "healthy", "lifeStatus": "alive"},
+      "expectedStatus": 201
     }
   ]
 }

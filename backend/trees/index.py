@@ -117,10 +117,46 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in rows])}
 
         if method == "POST":
-            body = json.loads(event.get("body") or "{}")
-            new_id = str(uuid.uuid4())
+            raw = json.loads(event.get("body") or "{}")
             today = date.today().isoformat()
             user_id, user_name = get_user_from_event(event)
+
+            # Bulk-вставка: если тело — массив объектов
+            if isinstance(raw, list):
+                if not raw:
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "empty array"})}
+                cur.execute(f"SELECT COALESCE(MAX(number), 0) AS max_num FROM {SCHEMA}.trees")
+                start_num = cur.fetchone()["max_num"]
+                new_ids = []
+                for i, item in enumerate(raw):
+                    new_id = str(uuid.uuid4())
+                    new_ids.append(new_id)
+                    cur.execute(
+                        f"""INSERT INTO {SCHEMA}.trees
+                           (id,number,lat,lng,name,species,diameter,height,count,age,
+                            status,condition,life_status,address,description,photo_url,created_at,updated_at,
+                            created_by_id,created_by_name)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                        (
+                            new_id, start_num + i + 1,
+                            item["lat"], item["lng"], item["name"], item["species"],
+                            item.get("diameter", 20), item.get("height", 8),
+                            item.get("count", 1), item.get("age"),
+                            item.get("status", "good"), item.get("condition", "healthy"),
+                            item.get("lifeStatus", "alive"),
+                            item.get("address"), item.get("description"), item.get("photoUrl"),
+                            today, today,
+                            user_id, user_name,
+                        ),
+                    )
+                conn.commit()
+                placeholders = ",".join(["%s"] * len(new_ids))
+                cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id IN ({placeholders}) ORDER BY number ASC", new_ids)
+                return {"statusCode": 201, "headers": CORS, "body": json.dumps([fmt(r) for r in cur.fetchall()])}
+
+            # Одиночная вставка
+            body = raw
+            new_id = str(uuid.uuid4())
             cur.execute(f"SELECT COALESCE(MAX(number), 0) + 1 AS next_num FROM {SCHEMA}.trees")
             next_num = cur.fetchone()["next_num"]
             cur.execute(

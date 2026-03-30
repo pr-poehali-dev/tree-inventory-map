@@ -72,20 +72,17 @@ export function useTreeStore() {
   }, [trees]);
 
   const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
-    const added: TreeMarker[] = [];
+    if (newTrees.length === 0) return;
     setImportProgress({ current: 0, total: newTrees.length });
-    for (let i = 0; i < newTrees.length; i++) {
-      const res = await fetch(TREES_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTrees[i]),
-      });
-      const saved: TreeMarker = await res.json();
-      added.push(saved);
-      setImportProgress({ current: i + 1, total: newTrees.length });
-    }
-    setTrees(prev => [...added, ...prev]);
-    setImportProgress(null);
+    const res = await fetch(TREES_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTrees),
+    });
+    const added: TreeMarker[] = await res.json();
+    setImportProgress({ current: newTrees.length, total: newTrees.length });
+    setTrees(prev => [...(Array.isArray(added) ? added : []), ...prev]);
+    setTimeout(() => setImportProgress(null), 800);
   }, []);
 
   const filteredTrees = trees.filter(tree => {
