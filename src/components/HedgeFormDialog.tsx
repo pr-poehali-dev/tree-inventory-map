@@ -69,7 +69,7 @@ export default function HedgeFormDialog({ open, onClose, onSave, points, lengthM
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[9999]">
                 {HEDGE_SPECIES_LIST.map(s => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
@@ -84,7 +84,7 @@ export default function HedgeFormDialog({ open, onClose, onSave, points, lengthM
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   {(Object.entries(STATUS_LABELS) as [TreeStatus, string][]).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
@@ -97,7 +97,7 @@ export default function HedgeFormDialog({ open, onClose, onSave, points, lengthM
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   {(Object.entries(CONDITION_LABELS) as [TreeCondition, string][]).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
