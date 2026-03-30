@@ -289,7 +289,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 <div className="font-semibold text-[var(--forest-dark)] font-heading">Импорт и Экспорт</div>
                 <div className="text-xs text-[var(--stone)]">Обмен данными с другими системами</div>
               </div>
-              <ImportExportView trees={store.trees} onImport={store.importTrees} isGuest={isGuest} />
+              <ImportExportView trees={store.trees} onImport={store.importTrees} importProgress={store.importProgress} isGuest={isGuest} />
             </div>
           )}
 

@@ -6,6 +6,7 @@ const TREES_URL = 'https://functions.poehali.dev/1b6d0efc-fd2f-47f8-bbb8-13e7b83
 export function useTreeStore() {
   const [trees, setTrees] = useState<TreeMarker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [filterSpecies, setFilterSpecies] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<TreeStatus | ''>('');
@@ -72,16 +73,19 @@ export function useTreeStore() {
 
   const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
     const added: TreeMarker[] = [];
-    for (const tree of newTrees) {
+    setImportProgress({ current: 0, total: newTrees.length });
+    for (let i = 0; i < newTrees.length; i++) {
       const res = await fetch(TREES_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tree),
+        body: JSON.stringify(newTrees[i]),
       });
       const saved: TreeMarker = await res.json();
       added.push(saved);
+      setImportProgress({ current: i + 1, total: newTrees.length });
     }
     setTrees(prev => [...added, ...prev]);
+    setImportProgress(null);
   }, []);
 
   const filteredTrees = trees.filter(tree => {
@@ -101,6 +105,7 @@ export function useTreeStore() {
   return {
     trees,
     loading,
+    importProgress,
     filteredTrees,
     selectedTree,
     selectedTreeId,

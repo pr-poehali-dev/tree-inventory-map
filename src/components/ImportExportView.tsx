@@ -66,10 +66,11 @@ const TREE_CODE_MAP: Record<string, { name: string; species: string; condition: 
 interface Props {
   trees: TreeMarker[];
   onImport: (trees: TreeMarker[]) => void;
+  importProgress?: { current: number; total: number } | null;
   isGuest?: boolean;
 }
 
-export default function ImportExportView({ trees, onImport, isGuest = false }: Props) {
+export default function ImportExportView({ trees, onImport, importProgress, isGuest = false }: Props) {
   const kmlRef  = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
   const txtRef  = useRef<HTMLInputElement>(null);
@@ -382,6 +383,26 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
             </div>
           </div>
 
+          {importProgress ? (
+            <div className="w-full rounded-lg bg-purple-100 border border-purple-300 p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-purple-800">
+                <div className="flex items-center gap-1.5">
+                  <Icon name="Loader2" size={13} className="animate-spin text-purple-600" />
+                  Загружаю в базу данных...
+                </div>
+                <span>{importProgress.current} / {importProgress.total}</span>
+              </div>
+              <div className="w-full h-2 bg-purple-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-purple-600 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-purple-600 text-center">
+                {Math.round((importProgress.current / importProgress.total) * 100)}% — не закрывайте страницу
+              </div>
+            </div>
+          ) : (
           <button
             onClick={() => txtRef.current?.click()}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-colors text-sm text-white font-medium shadow-sm"
@@ -389,6 +410,7 @@ export default function ImportExportView({ trees, onImport, isGuest = false }: P
             <Icon name="FileText" size={15} className="text-white" />
             Загрузить TXT файл (МСК-167)
           </button>
+          )}
 
           {/* Результат импорта */}
           {txtPreview && (
