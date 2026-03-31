@@ -95,6 +95,22 @@ export default function Index({ user, onLogout }: IndexProps) {
     setHedgeFormOpen(true);
   }, []);
 
+  const handleHedgePointsEdit = useCallback((id: string, points: [number, number][]) => {
+    const hedge = hedgeStore.hedges.find(h => h.id === id);
+    if (!hedge) return;
+    const lengthM = points.reduce((dist, pt, i) => {
+      if (i === 0) return 0;
+      const prev = points[i - 1];
+      const R = 6371000;
+      const lat1 = prev[0] * Math.PI / 180, lat2 = pt[0] * Math.PI / 180;
+      const dlat = (pt[0] - prev[0]) * Math.PI / 180;
+      const dlng = (pt[1] - prev[1]) * Math.PI / 180;
+      const a = Math.sin(dlat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlng/2)**2;
+      return dist + R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }, 0);
+    hedgeStore.updateHedge(id, { points, lengthM });
+  }, [hedgeStore]);
+
   const handleHedgeSave = useCallback(
     (data: Omit<HedgeRow, 'id' | 'number' | 'createdAt' | 'updatedAt'>) => {
       if (editingHedge) {
@@ -234,6 +250,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onHedgeEdit={isEditor ? handleHedgeEdit : undefined}
                 onHedgeDelete={isEditor ? hedgeStore.deleteHedge : undefined}
                 selectedHedgeId={hedgeStore.selectedHedgeId}
+                onHedgePointsEdit={isEditor ? handleHedgePointsEdit : undefined}
               />
             </div>
           )}

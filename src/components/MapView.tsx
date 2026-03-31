@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster';
@@ -25,6 +25,7 @@ interface Props {
   onHedgeEdit?: (hedge: HedgeRow) => void;
   onHedgeDelete?: (id: string) => void;
   selectedHedgeId?: string | null;
+  onHedgePointsEdit?: (id: string, points: [number, number][]) => void;
 }
 
 const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
@@ -115,7 +116,7 @@ function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatu
   });
 }
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -129,8 +130,11 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const hedgeDrawPointsRef = useRef<[number, number][]>([]);
   const hedgeDrawLineRef = useRef<L.Polyline | null>(null);
   const hedgeDrawMarkersRef = useRef<L.CircleMarker[]>([]);
+  const hedgeEditMarkersRef = useRef<L.CircleMarker[]>([]);
+  const hedgeEditIdRef = useRef<string | null>(null);
   const [addMode, setAddMode] = useState(false);
   const [hedgeDrawMode, setHedgeDrawMode] = useState(false);
+  const [hedgeEditMode, setHedgeEditMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
@@ -357,6 +361,92 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     setHedgeDrawMode(false);
   };
 
+  const startHedgePointsEdit = useCallback((hedgeId: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const hedge = hedges.find(h => h.id === hedgeId);
+    if (!hedge) return;
+
+    stopHedgePointsEdit();
+    hedgeEditIdRef.current = hedgeId;
+    setHedgeEditMode(true);
+    setAddMode(false);
+    setHedgeDrawMode(false);
+
+    const pts: [number, number][] = [...hedge.points];
+
+    const updateLine = () => {
+      const line = hedgeLayersRef.current.get(hedgeId);
+      if (line) line.setLatLngs(pts);
+    };
+
+    hedge.points.forEach((pt, i) => {
+      const marker = L.circleMarker(pt, {
+        radius: 8,
+        color: '#f97316',
+        fillColor: '#fff',
+        fillOpacity: 1,
+        weight: 3,
+        draggable: true,
+      } as L.CircleMarkerOptions & { draggable: boolean });
+
+      (marker as unknown as L.Marker).dragging?.enable();
+
+      marker.on('mousedown', (e: L.LeafletMouseEvent) => {
+        map.dragging.disable();
+        const onMove = (me: L.LeafletMouseEvent) => {
+          pts[i] = [me.latlng.lat, me.latlng.lng];
+          marker.setLatLng(me.latlng);
+          updateLine();
+        };
+        const onUp = () => {
+          map.dragging.enable();
+          map.off('mousemove', onMove);
+          map.off('mouseup', onUp);
+        };
+        map.on('mousemove', onMove);
+        map.on('mouseup', onUp);
+        L.DomEvent.stopPropagation(e);
+      });
+
+      marker.on('touchstart', (e: L.LeafletMouseEvent) => {
+        map.dragging.disable();
+        const onMove = (me: L.LeafletMouseEvent) => {
+          pts[i] = [me.latlng.lat, me.latlng.lng];
+          marker.setLatLng(me.latlng);
+          updateLine();
+        };
+        const onEnd = () => {
+          map.dragging.enable();
+          map.off('touchmove', onMove);
+          map.off('touchend', onEnd);
+          if (onHedgePointsEdit) onHedgePointsEdit(hedgeId, [...pts]);
+        };
+        map.on('touchmove', onMove);
+        map.on('touchend', onEnd);
+        L.DomEvent.stopPropagation(e);
+      });
+
+      (hedgeEditMarkersRef.current as L.CircleMarker[]).push(marker.addTo(map));
+    });
+
+    (window as unknown as Record<string, unknown>).__hedgeEditPts = pts;
+    (window as unknown as Record<string, unknown>).__hedgeEditId = hedgeId;
+  }, [hedges, onHedgePointsEdit]);
+
+  const stopHedgePointsEdit = (save = false) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (save && onHedgePointsEdit && hedgeEditIdRef.current) {
+      const pts = (window as unknown as Record<string, unknown>).__hedgeEditPts as [number, number][];
+      if (pts) onHedgePointsEdit(hedgeEditIdRef.current, [...pts]);
+    }
+    hedgeEditMarkersRef.current.forEach(m => m.remove());
+    hedgeEditMarkersRef.current = [];
+    hedgeEditIdRef.current = null;
+    setHedgeEditMode(false);
+  };
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -468,8 +558,9 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           ${hedge.lengthM ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">Длина: ${hedge.lengthM.toFixed(1)} м</div>` : ''}
           ${hedge.description ? `<div style="font-size:12px;color:#777;margin-bottom:8px;">${hedge.description}</div>` : ''}
           ${!isGuest ? `
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <button onclick="window.__hedgeEdit('${hedge.id}')" style="flex:1;padding:5px 8px;background:#2d6a4f;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Изменить</button>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <button onclick="window.__hedgeEdit('${hedge.id}')" style="flex:1;min-width:70px;padding:5px 8px;background:#2d6a4f;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Изменить</button>
+            <button onclick="window.__hedgePtsEdit('${hedge.id}')" style="flex:1;min-width:70px;padding:5px 8px;background:#f97316;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Сдвинуть точки</button>
             <button onclick="window.__hedgeDel('${hedge.id}')" style="padding:5px 8px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Удалить</button>
           </div>` : ''}
         </div>`;
@@ -489,7 +580,8 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__hedgeEdit = (id: string) => { const h = hedges.find(x => x.id === id); if (h && onHedgeEdit) onHedgeEdit(h); };
     (window as unknown as Record<string, unknown>).__hedgeDel = (id: string) => { if (onHedgeDelete) onHedgeDelete(id); };
-  }, [hedges, onHedgeEdit, onHedgeDelete]);
+    (window as unknown as Record<string, unknown>).__hedgePtsEdit = (id: string) => { startHedgePointsEdit(id); };
+  }, [hedges, onHedgeEdit, onHedgeDelete, startHedgePointsEdit]);
 
   return (
     <div className="relative w-full h-full">
@@ -539,6 +631,24 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                   <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-800 shadow">
                     Кликайте точки линии.<br />Двойной клик — завершить.
                     <button onClick={cancelHedgeDraw} className="block mt-1.5 text-red-500 hover:text-red-700 font-semibold">✕ Отмена</button>
+                  </div>
+                )}
+                {hedgeEditMode && (
+                  <div className="bg-orange-50 border border-orange-300 rounded-xl px-3 py-2 text-xs text-orange-800 shadow">
+                    <div className="font-semibold mb-1">✏️ Режим сдвига точек</div>
+                    Перетаскивайте оранжевые точки на линии.
+                    <button
+                      onClick={() => stopHedgePointsEdit(true)}
+                      className="block mt-2 w-full text-center bg-orange-500 text-white rounded-lg py-1 font-semibold hover:bg-orange-600"
+                    >
+                      ✓ Сохранить
+                    </button>
+                    <button
+                      onClick={() => stopHedgePointsEdit(false)}
+                      className="block mt-1 w-full text-center text-red-500 hover:text-red-700 font-semibold"
+                    >
+                      ✕ Отмена
+                    </button>
                   </div>
                 )}
               </>
