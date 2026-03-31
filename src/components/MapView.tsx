@@ -229,7 +229,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
     const map = L.map(containerRef.current, {
       center: [53.7102, 91.6886],
-      zoom: 15,
+      zoom: 17,
       zoomControl: false,
     });
 
