@@ -37,8 +37,13 @@ export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, i
             className="pl-9 border-[var(--forest-light)]/40"
           />
         </div>
-        <div className="mt-2 text-xs text-[var(--stone)]">
-          Найдено: {sorted.length} {sorted.length === 1 ? 'изгородь' : sorted.length < 5 ? 'изгороди' : 'изгородей'}
+        <div className="mt-2 flex items-center justify-between text-xs text-[var(--stone)]">
+          <span>Найдено: {sorted.length} {sorted.length === 1 ? 'изгородь' : sorted.length < 5 ? 'изгороди' : 'изгородей'}</span>
+          {sorted.some(h => h.lengthM) && (
+            <span className="text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+              📏 Итого: {sorted.reduce((s, h) => s + (h.lengthM ?? 0), 0).toFixed(1)} м
+            </span>
+          )}
         </div>
       </div>
 
