@@ -26,6 +26,7 @@ interface Props {
   onHedgeDelete?: (id: string) => void;
   selectedHedgeId?: string | null;
   onHedgePointsEdit?: (id: string, points: [number, number][]) => void;
+  onPolygonSelect?: (trees: TreeMarker[]) => void;
 }
 
 const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
@@ -116,7 +117,20 @@ function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatu
   });
 }
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit }: Props) {
+function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+  const [px, py] = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if (((yi > py) !== (yj > py)) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit, onPolygonSelect }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -132,9 +146,14 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const hedgeDrawMarkersRef = useRef<L.CircleMarker[]>([]);
   const hedgeEditMarkersRef = useRef<L.CircleMarker[]>([]);
   const hedgeEditIdRef = useRef<string | null>(null);
+  const polySelPointsRef = useRef<[number, number][]>([]);
+  const polySelLineRef = useRef<L.Polygon | null>(null);
+  const polySelMarkersRef = useRef<L.CircleMarker[]>([]);
+  const polySelPreviewRef = useRef<L.Polyline | null>(null);
   const [addMode, setAddMode] = useState(false);
   const [hedgeDrawMode, setHedgeDrawMode] = useState(false);
   const [hedgeEditMode, setHedgeEditMode] = useState(false);
+  const [polySelectMode, setPolySelectMode] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayer>('scheme');
   const [showOffset, setShowOffset] = useState(false);
   const [tileOffset, setTileOffset] = useState({ x: 0, y: 0 });
@@ -447,6 +466,36 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     setHedgeEditMode(false);
   };
 
+  const clearPolySel = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    polySelPointsRef.current = [];
+    if (polySelLineRef.current) { polySelLineRef.current.remove(); polySelLineRef.current = null; }
+    polySelMarkersRef.current.forEach(m => m.remove());
+    polySelMarkersRef.current = [];
+    if (polySelPreviewRef.current) { polySelPreviewRef.current.remove(); polySelPreviewRef.current = null; }
+  };
+
+  const finishPolySel = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const pts = polySelPointsRef.current;
+    if (pts.length >= 3 && onPolygonSelect) {
+      const inside = trees.filter(t => pointInPolygon([t.lat, t.lng], pts));
+      onPolygonSelect(inside);
+    }
+    clearPolySel();
+    setPolySelectMode(false);
+    if (map) map.getContainer().style.cursor = '';
+  };
+
+  const cancelPolySel = () => {
+    clearPolySel();
+    setPolySelectMode(false);
+    const map = mapRef.current;
+    if (map) map.getContainer().style.cursor = '';
+  };
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -468,6 +517,30 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         }
         const dot = L.circleMarker(pt, { radius: 5, color: HEDGE_COLOR, fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(map);
         hedgeDrawMarkersRef.current = [...hedgeDrawMarkersRef.current, dot];
+        return;
+      }
+      if (polySelectMode) {
+        const pt: [number, number] = [e.latlng.lat, e.latlng.lng];
+        polySelPointsRef.current = [...polySelPointsRef.current, pt];
+        const pts = polySelPointsRef.current;
+        if (polySelLineRef.current) {
+          polySelLineRef.current.setLatLngs(pts);
+        } else {
+          polySelLineRef.current = L.polygon(pts, { color: '#8b5cf6', weight: 2.5, fillColor: '#8b5cf6', fillOpacity: 0.12, dashArray: '6,4' }).addTo(map);
+        }
+        const dot = L.circleMarker(pt, { radius: 5, color: '#8b5cf6', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(map);
+        polySelMarkersRef.current = [...polySelMarkersRef.current, dot];
+        return;
+      }
+    };
+
+    const handleMouseMove = (e: L.LeafletMouseEvent) => {
+      if (polySelectMode && polySelPointsRef.current.length > 0) {
+        if (polySelPreviewRef.current) polySelPreviewRef.current.remove();
+        const last = polySelPointsRef.current[polySelPointsRef.current.length - 1];
+        polySelPreviewRef.current = L.polyline([last, [e.latlng.lat, e.latlng.lng]], {
+          color: '#8b5cf6', weight: 1.5, dashArray: '4,4', opacity: 0.5,
+        }).addTo(map);
       }
     };
 
@@ -475,19 +548,29 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
       if (hedgeDrawMode) {
         L.DomEvent.stopPropagation(e);
         finishHedgeDraw();
+        return;
+      }
+      if (polySelectMode) {
+        L.DomEvent.stopPropagation(e);
+        finishPolySel();
       }
     };
 
     map.on('click', handleClick);
+    map.on('mousemove', handleMouseMove);
     map.on('dblclick', handleDblClick);
-    if (hedgeDrawMode) {
+    if (hedgeDrawMode || polySelectMode) {
       map.getContainer().style.cursor = 'crosshair';
     } else {
       map.getContainer().style.cursor = addMode ? 'crosshair' : '';
     }
 
-    return () => { map.off('click', handleClick); map.off('dblclick', handleDblClick); };
-  }, [addMode, onMapClick, hedgeDrawMode]);
+    return () => {
+      map.off('click', handleClick);
+      map.off('mousemove', handleMouseMove);
+      map.off('dblclick', handleDblClick);
+    };
+  }, [addMode, onMapClick, hedgeDrawMode, polySelectMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -649,6 +732,35 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
                     >
                       ✕ Отмена
                     </button>
+                  </div>
+                )}
+              </>
+            )}
+            {onPolygonSelect && (
+              <>
+                <button
+                  onClick={() => {
+                    const next = !polySelectMode;
+                    setPolySelectMode(next);
+                    if (!next) cancelPolySel();
+                    if (addMode) setAddMode(false);
+                    if (hedgeDrawMode) cancelHedgeDraw();
+                  }}
+                  className={`
+                    flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
+                    ${polySelectMode
+                      ? 'bg-violet-600 text-white ring-2 ring-violet-300'
+                      : 'bg-white text-violet-700 hover:bg-violet-50'
+                    }
+                  `}
+                >
+                  <span>⬡</span>
+                  {polySelectMode ? 'Ставьте точки...' : 'Выбор полигоном'}
+                </button>
+                {polySelectMode && (
+                  <div className="bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 text-xs text-violet-800 shadow">
+                    Кликайте углы области.<br />Двойной клик — завершить.
+                    <button onClick={cancelPolySel} className="block mt-1.5 text-red-500 hover:text-red-700 font-semibold">✕ Отмена</button>
                   </div>
                 )}
               </>

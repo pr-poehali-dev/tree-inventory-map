@@ -8,6 +8,7 @@ import HelpView from '@/components/HelpView';
 import AdminView from '@/components/AdminView';
 import TreeFormDialog from '@/components/TreeFormDialog';
 import HedgeFormDialog from '@/components/HedgeFormDialog';
+import PolygonResultPanel from '@/components/PolygonResultPanel';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
 import { useHedgeStore } from '@/store/useHedgeStore';
@@ -48,6 +49,7 @@ export default function Index({ user, onLogout }: IndexProps) {
   const [editingHedge, setEditingHedge] = useState<HedgeRow | null>(null);
   const [pendingHedgePoints, setPendingHedgePoints] = useState<[number, number][]>([]);
   const [pendingHedgeLength, setPendingHedgeLength] = useState<number | null>(null);
+  const [polygonTrees, setPolygonTrees] = useState<TreeMarker[] | null>(null);
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPendingLatLng({ lat, lng });
@@ -93,6 +95,10 @@ export default function Index({ user, onLogout }: IndexProps) {
   const handleHedgeEdit = useCallback((hedge: HedgeRow) => {
     setEditingHedge(hedge);
     setHedgeFormOpen(true);
+  }, []);
+
+  const handlePolygonSelect = useCallback((trees: TreeMarker[]) => {
+    setPolygonTrees(trees);
   }, []);
 
   const handleHedgePointsEdit = useCallback((id: string, points: [number, number][]) => {
@@ -236,7 +242,7 @@ export default function Index({ user, onLogout }: IndexProps) {
         {/* Content area */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {activeTab === 'map' && (
-            <div className="flex-1 p-3 overflow-hidden">
+            <div className="flex-1 p-3 overflow-hidden relative">
               <MapView
                 trees={store.filteredTrees}
                 onMapClick={isEditor ? handleMapClick : () => {}}
@@ -251,7 +257,15 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onHedgeDelete={isEditor ? hedgeStore.deleteHedge : undefined}
                 selectedHedgeId={hedgeStore.selectedHedgeId}
                 onHedgePointsEdit={isEditor ? handleHedgePointsEdit : undefined}
+                onPolygonSelect={handlePolygonSelect}
               />
+              {polygonTrees !== null && (
+                <PolygonResultPanel
+                  trees={polygonTrees}
+                  onClose={() => setPolygonTrees(null)}
+                  onSelectTree={id => { store.setSelectedTreeId(id); setPolygonTrees(null); }}
+                />
+              )}
             </div>
           )}
 
