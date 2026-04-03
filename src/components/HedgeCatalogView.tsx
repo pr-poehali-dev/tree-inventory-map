@@ -17,6 +17,28 @@ export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, i
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const exportCSV = () => {
+    const headers = ['№', 'Название', 'Вид кустарника', 'Длина (м)', 'Состояние', 'Жизнеспособность', 'Описание', 'Дата добавления'];
+    const rows = sorted.map(h => [
+      h.number,
+      h.name,
+      h.species,
+      h.lengthM !== null && h.lengthM !== undefined ? h.lengthM.toFixed(1) : '',
+      STATUS_LABELS[h.status] ?? h.status,
+      CONDITION_LABELS[h.condition] ?? h.condition,
+      h.description ?? '',
+      new Date(h.createdAt).toLocaleDateString('ru-RU'),
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `izgorodi_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filtered = hedges.filter(h =>
     !search ||
     h.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,11 +61,23 @@ export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, i
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-[var(--stone)]">
           <span>Найдено: {sorted.length} {sorted.length === 1 ? 'изгородь' : sorted.length < 5 ? 'изгороди' : 'изгородей'}</span>
-          {sorted.some(h => h.lengthM) && (
-            <span className="text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-              📏 Итого: {sorted.reduce((s, h) => s + (h.lengthM ?? 0), 0).toFixed(1)} м
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {sorted.some(h => h.lengthM) && (
+              <span className="text-green-700 font-semibold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                📏 Итого: {sorted.reduce((s, h) => s + (h.lengthM ?? 0), 0).toFixed(1)} м
+              </span>
+            )}
+            {sorted.length > 0 && (
+              <button
+                onClick={exportCSV}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[var(--forest-light)]/50 bg-[var(--forest-pale)] text-[var(--forest-dark)] hover:bg-[var(--forest-light)]/20 transition-all font-semibold"
+                title="Экспорт в CSV"
+              >
+                <Icon name="Download" size={11} />
+                CSV
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
