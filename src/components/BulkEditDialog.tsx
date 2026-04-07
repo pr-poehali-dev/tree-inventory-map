@@ -91,7 +91,7 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
 
           <div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">Порода</label>
-            <Select value={species} onValueChange={setSpecies}>
+            <Select value={species} onValueChange={setSpecies} modal={false}>
               <SelectTrigger className="text-sm h-9">
                 <SelectValue placeholder="Не изменять" />
               </SelectTrigger>
