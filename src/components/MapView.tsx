@@ -76,22 +76,22 @@ function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatu
       className: '',
       html: `
         <div style="
-          width:28px;height:28px;
+          width:22px;height:22px;
           background:#e53e3e;
-          border:3px solid white;
+          border:2px solid white;
           border-radius:50%;
-          box-shadow:0 3px 10px rgba(0,0,0,0.35);
+          box-shadow:0 2px 8px rgba(0,0,0,0.35);
           display:flex;align-items:center;justify-content:center;
         ">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
             <line x1="2" y1="2" x2="12" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
             <line x1="12" y1="2" x2="2" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
           </svg>
         </div>
       `,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-      popupAnchor: [0, -18],
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -14],
     });
   }
   const color = STATUS_COLORS[status];
@@ -100,20 +100,20 @@ function createTreeIcon(status: TreeMarker['status'], species: string, lifeStatu
     className: '',
     html: `
       <div style="
-        width:28px;height:28px;
+        width:22px;height:22px;
         background:${color};
-        border:3px solid white;
+        border:2px solid white;
         border-radius:50% 50% 50% 0;
         transform:rotate(-45deg);
-        box-shadow:0 3px 10px rgba(26,58,42,0.35);
+        box-shadow:0 2px 8px rgba(26,58,42,0.35);
         display:flex;align-items:center;justify-content:center;
       ">
-        <span style="transform:rotate(45deg);font-size:11px;">${emoji}</span>
+        <span style="transform:rotate(45deg);font-size:9px;">${emoji}</span>
       </div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -30],
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+    popupAnchor: [0, -24],
   });
 }
 
