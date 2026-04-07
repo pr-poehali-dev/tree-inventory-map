@@ -14,7 +14,7 @@ interface Props {
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
   onDeleteBefore?: (fromDate: string, toDate: string) => Promise<void>;
-  onBulkEdit?: (ids: string[], updates: { name?: string; diameter?: number; height?: number }) => Promise<void>;
+  onBulkEdit?: (ids: string[], updates: Partial<TreeMarker>) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   filterSpecies: string;

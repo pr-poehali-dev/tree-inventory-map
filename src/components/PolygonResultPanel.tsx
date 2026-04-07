@@ -6,7 +6,7 @@ interface Props {
   trees: TreeMarker[];
   onClose: () => void;
   onSelectTree: (id: string) => void;
-  onBulkEdit?: (ids: string[], updates: { name?: string; diameter?: number; height?: number }) => Promise<void>;
+  onBulkEdit?: (ids: string[], updates: Partial<import('@/types/tree').TreeMarker>) => Promise<void>;
   isEditor?: boolean;
 }
 
