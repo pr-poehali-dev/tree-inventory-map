@@ -28,6 +28,7 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree, onBul
   }, {});
 
   return (
+    <>
     <div className="absolute top-4 right-4 z-[1000] w-80 max-h-[calc(100vh-6rem)] flex flex-col bg-white/97 backdrop-blur-sm rounded-2xl shadow-2xl border border-violet-100 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-violet-600 text-white">
         <div>
@@ -109,15 +110,16 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree, onBul
           </div>
         </>
       )}
-      {onBulkEdit && (
-        <BulkEditDialog
-          open={bulkOpen}
-          trees={trees}
-          onClose={() => setBulkOpen(false)}
-          onSave={onBulkEdit}
-        />
-      )}
     </div>
+    {onBulkEdit && (
+      <BulkEditDialog
+        open={bulkOpen}
+        trees={trees}
+        onClose={() => setBulkOpen(false)}
+        onSave={onBulkEdit}
+      />
+    )}
+    </>
   );
 }
 
