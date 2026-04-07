@@ -6,6 +6,7 @@ import Icon from '@/components/ui/icon';
 import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_GROUPS, TreeStatus } from '@/types/tree';
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import BulkEditDialog from '@/components/BulkEditDialog';
 
 interface Props {
   trees: TreeMarker[];
@@ -13,6 +14,7 @@ interface Props {
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
   onDeleteBefore?: (fromDate: string, toDate: string) => Promise<void>;
+  onBulkEdit?: (ids: string[], updates: { name?: string; diameter?: number; height?: number }) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   filterSpecies: string;
@@ -28,6 +30,7 @@ export default function CatalogView({
   onEdit,
   onDelete,
   onDeleteBefore,
+  onBulkEdit,
   searchQuery,
   setSearchQuery,
   filterSpecies,
@@ -44,6 +47,7 @@ export default function CatalogView({
   const [bulkDeleteTo, setBulkDeleteTo] = useState('');
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   const filtered = trees.filter(tree => {
     if (dateFrom && tree.createdAt < dateFrom) return false;
@@ -150,6 +154,15 @@ export default function CatalogView({
           <div className="text-xs text-[var(--stone)]">
             Найдено: <span className="font-semibold text-[var(--forest-mid)]">{sorted.length}</span> объектов
           </div>
+          {!isGuest && onBulkEdit && sorted.length > 0 && (
+            <button
+              onClick={() => setBulkEditOpen(true)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-[var(--forest-pale)] border border-[var(--forest-light)]/50 text-[var(--forest-dark)] hover:bg-[var(--forest-light)]/20 font-semibold transition-all"
+            >
+              <Icon name="Pencil" size={12} />
+              Изменить всё ({sorted.length})
+            </button>
+          )}
         </div>
 
         {!isGuest && onDeleteBefore && (
@@ -365,6 +378,15 @@ export default function CatalogView({
           </div>
         </DialogContent>
       </Dialog>
+
+      {onBulkEdit && (
+        <BulkEditDialog
+          open={bulkEditOpen}
+          trees={sorted}
+          onClose={() => setBulkEditOpen(false)}
+          onSave={onBulkEdit}
+        />
+      )}
     </div>
   );
 }

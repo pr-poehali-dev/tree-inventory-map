@@ -264,6 +264,8 @@ export default function Index({ user, onLogout }: IndexProps) {
                   trees={polygonTrees}
                   onClose={() => setPolygonTrees(null)}
                   onSelectTree={id => { store.setSelectedTreeId(id); setPolygonTrees(null); }}
+                  onBulkEdit={isEditor ? store.updateManyTrees : undefined}
+                  isEditor={isEditor}
                 />
               )}
             </div>
@@ -277,6 +279,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onEdit={isEditor ? handleEdit : () => {}}
                 onDelete={isEditor ? store.deleteTree : () => {}}
                 onDeleteBefore={isEditor ? store.deleteTreesBefore : undefined}
+                onBulkEdit={isEditor ? store.updateManyTrees : undefined}
                 searchQuery={store.searchQuery}
                 setSearchQuery={store.setSearchQuery}
                 filterSpecies={store.filterSpecies}

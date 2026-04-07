@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { TreeMarker, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
+import BulkEditDialog from '@/components/BulkEditDialog';
 
 interface Props {
   trees: TreeMarker[];
   onClose: () => void;
   onSelectTree: (id: string) => void;
+  onBulkEdit?: (ids: string[], updates: { name?: string; diameter?: number; height?: number }) => Promise<void>;
+  isEditor?: boolean;
 }
 
-export default function PolygonResultPanel({ trees, onClose, onSelectTree }: Props) {
+export default function PolygonResultPanel({ trees, onClose, onSelectTree, onBulkEdit, isEditor = false }: Props) {
   const [search, setSearch] = useState('');
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const filtered = trees.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -33,7 +37,17 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree }: Pro
             {totalCount !== trees.length && ` · ${totalCount} стволов`}
           </div>
         </div>
-        <button onClick={onClose} className="text-violet-200 hover:text-white text-xl leading-none">✕</button>
+        <div className="flex items-center gap-2">
+          {isEditor && trees.length > 0 && onBulkEdit && (
+            <button
+              onClick={() => setBulkOpen(true)}
+              className="text-xs px-2 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-white font-semibold transition-all"
+            >
+              ✏️ Изменить всё
+            </button>
+          )}
+          <button onClick={onClose} className="text-violet-200 hover:text-white text-xl leading-none">✕</button>
+        </div>
       </div>
 
       {trees.length === 0 ? (
@@ -94,6 +108,14 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree }: Pro
             )}
           </div>
         </>
+      )}
+      {onBulkEdit && (
+        <BulkEditDialog
+          open={bulkOpen}
+          trees={trees}
+          onClose={() => setBulkOpen(false)}
+          onSave={onBulkEdit}
+        />
       )}
     </div>
   );
