@@ -10,6 +10,7 @@ type BulkUpdates = {
   species?: string;
   diameter?: number;
   height?: number;
+  count?: number;
   status?: TreeStatus;
   condition?: TreeCondition;
   lifeStatus?: TreeLifeStatus;
@@ -29,13 +30,14 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
   const [species, setSpecies] = useState(NONE);
   const [diameter, setDiameter] = useState('');
   const [height, setHeight] = useState('');
+  const [count, setCount] = useState('');
   const [status, setStatus] = useState<TreeStatus | typeof NONE>(NONE);
   const [condition, setCondition] = useState<TreeCondition | typeof NONE>(NONE);
   const [lifeStatus, setLifeStatus] = useState<TreeLifeStatus | typeof NONE>(NONE);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
-    setName(''); setSpecies(NONE); setDiameter(''); setHeight('');
+    setName(''); setSpecies(NONE); setDiameter(''); setHeight(''); setCount('');
     setStatus(NONE); setCondition(NONE); setLifeStatus(NONE);
   };
 
@@ -45,6 +47,7 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
     if (species !== NONE) updates.species = species;
     if (diameter !== '' && Number(diameter) > 0) updates.diameter = Number(diameter);
     if (height !== '' && Number(height) > 0) updates.height = Number(height);
+    if (count !== '' && Number(count) > 0) updates.count = Number(count);
     if (status !== NONE) updates.status = status;
     if (condition !== NONE) updates.condition = condition;
     if (lifeStatus !== NONE) updates.lifeStatus = lifeStatus;
@@ -63,6 +66,7 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
     species !== NONE ||
     (diameter !== '' && Number(diameter) > 0) ||
     (height !== '' && Number(height) > 0) ||
+    (count !== '' && Number(count) > 0) ||
     status !== NONE ||
     condition !== NONE ||
     lifeStatus !== NONE;
@@ -108,14 +112,18 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Диаметр (см)</label>
-              <Input type="number" min={1} value={diameter} onChange={e => setDiameter(e.target.value)} placeholder="Не менять" />
+              <Input type="number" min={1} value={diameter} onChange={e => setDiameter(e.target.value)} placeholder="—" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Высота (м)</label>
-              <Input type="number" min={0.1} step={0.1} value={height} onChange={e => setHeight(e.target.value)} placeholder="Не менять" />
+              <Input type="number" min={0.1} step={0.1} value={height} onChange={e => setHeight(e.target.value)} placeholder="—" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Кол-во стволов</label>
+              <Input type="number" min={1} value={count} onChange={e => setCount(e.target.value)} placeholder="—" />
             </div>
           </div>
 
