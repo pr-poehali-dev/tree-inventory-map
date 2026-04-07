@@ -35,6 +35,7 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
   const [condition, setCondition] = useState<TreeCondition | typeof NONE>(NONE);
   const [lifeStatus, setLifeStatus] = useState<TreeLifeStatus | typeof NONE>(NONE);
   const [saving, setSaving] = useState(false);
+  const [savedCount, setSavedCount] = useState<number | null>(null);
 
   const reset = () => {
     setName(''); setSpecies(NONE); setDiameter(''); setHeight(''); setCount('');
@@ -55,10 +56,15 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
     if (Object.keys(updates).length === 0) return;
 
     setSaving(true);
+    setSavedCount(null);
     await onSave(trees.map(t => t.id), updates);
     setSaving(false);
+    setSavedCount(trees.length);
     reset();
-    onClose();
+    setTimeout(() => {
+      setSavedCount(null);
+      onClose();
+    }, 1500);
   };
 
   const hasChanges =
@@ -173,17 +179,30 @@ export default function BulkEditDialog({ open, trees, onClose, onSave }: Props) 
           </div>
         </div>
 
+        {savedCount !== null && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+            <span>✓</span>
+            <span>Сохранено {savedCount} {plural(savedCount, 'дерево', 'дерева', 'деревьев')}</span>
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleSave}
-            disabled={!hasChanges || saving}
+            disabled={!hasChanges || saving || savedCount !== null}
             className="flex-1 py-2 rounded-lg bg-[var(--forest-mid)] hover:bg-[var(--forest-dark)] disabled:opacity-40 text-white font-semibold text-sm transition-colors"
           >
-            {saving ? `Сохраняю... (${trees.length})` : 'Применить'}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Сохраняю {trees.length} {plural(trees.length, 'дерево', 'дерева', 'деревьев')}...
+              </span>
+            ) : 'Применить'}
           </button>
           <button
             onClick={() => { reset(); onClose(); }}
-            className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--stone)] hover:bg-gray-50 text-sm transition-colors"
+            disabled={saving}
+            className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--stone)] hover:bg-gray-50 disabled:opacity-40 text-sm transition-colors"
           >
             Отмена
           </button>

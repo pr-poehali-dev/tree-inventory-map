@@ -181,6 +181,37 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (new_id,))
             return {"statusCode": 201, "headers": CORS, "body": json.dumps(fmt(cur.fetchone()))}
 
+        if method == "PATCH":
+            body = json.loads(event.get("body") or "{}")
+            ids = body.get("ids", [])
+            updates = body.get("updates", {})
+            if not ids or not updates:
+                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "ids and updates required"})}
+            today = date.today().isoformat()
+            allowed = {"name", "species", "diameter", "height", "count", "age", "status", "condition", "lifeStatus", "address", "description"}
+            col_map = {"lifeStatus": "life_status"}
+            set_parts = []
+            values = []
+            for key, val in updates.items():
+                if key not in allowed:
+                    continue
+                col = col_map.get(key, key)
+                set_parts.append(f"{col} = %s")
+                values.append(val)
+            if not set_parts:
+                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no valid fields"})}
+            set_parts.append("updated_at = %s")
+            values.append(today)
+            placeholders = ",".join(["%s"] * len(ids))
+            values.extend(ids)
+            cur.execute(
+                f"UPDATE {SCHEMA}.trees SET {', '.join(set_parts)} WHERE id IN ({placeholders})",
+                values,
+            )
+            conn.commit()
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id IN ({placeholders}) ORDER BY number ASC", ids)
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in cur.fetchall()])}
+
         if method == "PUT":
             if not tree_id:
                 return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}

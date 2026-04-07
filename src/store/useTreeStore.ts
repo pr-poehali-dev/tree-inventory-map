@@ -72,19 +72,19 @@ export function useTreeStore() {
   }, [trees]);
 
   const updateManyTrees = useCallback(async (ids: string[], updates: Partial<TreeMarker>) => {
-    for (const id of ids) {
-      const existing = trees.find(t => t.id === id);
-      if (!existing) continue;
-      const merged = { ...existing, ...updates };
-      const res = await fetch(`${TREES_URL}?id=${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(merged),
-      });
-      const updated: TreeMarker = await res.json();
-      setTrees(prev => prev.map(t => t.id === id ? updated : t));
+    const res = await fetch(TREES_URL, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, updates }),
+    });
+    const updated: TreeMarker[] = await res.json();
+    if (Array.isArray(updated)) {
+      setTrees(prev => prev.map(t => {
+        const u = updated.find(u => u.id === t.id);
+        return u ? u : t;
+      }));
     }
-  }, [trees]);
+  }, []);
 
   const importTrees = useCallback(async (newTrees: TreeMarker[]) => {
     if (newTrees.length === 0) return;
