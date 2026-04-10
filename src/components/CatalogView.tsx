@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -48,25 +48,30 @@ export default function CatalogView({
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(50);
 
-  const filtered = trees.filter(tree => {
+  const filtered = useMemo(() => trees.filter(tree => {
     if (dateFrom && tree.createdAt < dateFrom) return false;
     if (dateTo && tree.createdAt > dateTo) return false;
     return true;
-  });
+  }), [trees, dateFrom, dateTo]);
 
-  const bulkDeleteCount = trees.filter(t => {
+  const bulkDeleteCount = useMemo(() => trees.filter(t => {
     if (bulkDeleteFrom && t.createdAt < bulkDeleteFrom) return false;
     if (bulkDeleteTo && t.createdAt > bulkDeleteTo) return false;
     return true;
-  }).length;
+  }).length, [trees, bulkDeleteFrom, bulkDeleteTo]);
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     if (sortBy === 'number') return (a.number ?? 0) - (b.number ?? 0);
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'date') return b.createdAt.localeCompare(a.createdAt);
     return (b[sortBy] ?? 0) - (a[sortBy] ?? 0);
-  });
+  }), [filtered, sortBy]);
+
+  useEffect(() => { setVisibleCount(50); }, [sorted]);
+
+  const visibleSliced = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
 
   return (
     <div className="flex flex-col h-full">
@@ -212,11 +217,10 @@ export default function CatalogView({
           </div>
         )}
 
-        {sorted.map((tree, i) => (
+        {visibleSliced.map((tree) => (
           <div
             key={tree.id}
-            className="bg-white rounded-xl border border-[var(--border)] hover:border-[var(--forest-light)] hover:shadow-md transition-all animate-fade-in cursor-pointer group"
-            style={{ animationDelay: `${i * 0.04}s` }}
+            className="bg-white rounded-xl border border-[var(--border)] hover:border-[var(--forest-light)] hover:shadow-md transition-all cursor-pointer group"
             onClick={() => onSelect(tree.id)}
           >
             <div className="flex gap-3 p-3">
@@ -307,6 +311,14 @@ export default function CatalogView({
             </div>
           </div>
         ))}
+        {visibleCount < sorted.length && (
+          <button
+            onClick={() => setVisibleCount(v => v + 50)}
+            className="w-full py-3 rounded-xl border border-[var(--forest-light)]/50 text-sm text-[var(--forest-mid)] hover:bg-[var(--forest-pale)] transition-colors font-medium"
+          >
+            Показать ещё (осталось {sorted.length - visibleCount})
+          </button>
+        )}
       </div>
 
       <Dialog open={confirmBulkDelete} onOpenChange={v => !bulkDeleting && setConfirmBulkDelete(v)}>
