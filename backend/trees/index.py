@@ -6,6 +6,18 @@ import json
 import os
 import uuid
 from datetime import date
+from decimal import Decimal
+
+
+class _Encoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
+
+
+def _dumps(obj):
+    return json.dumps(obj, cls=_Encoder)
 
 import psycopg2
 import psycopg2.extras
@@ -18,6 +30,7 @@ CORS = {
 
 SCHEMA = "t_p59085732_tree_inventory_map"
 SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
+SELECT_COLS_LIST = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,photo_url,created_at,updated_at,created_by_id,created_by_name"
 
 
 def get_conn():
@@ -83,8 +96,8 @@ def fmt(row):
         "condition": d["condition"],
         "lifeStatus": d["life_status"],
         "address": d.get("address"),
-        "description": d["description"],
-        "photoUrl": d["photo_url"],
+        "description": d.get("description"),
+        "photoUrl": d.get("photo_url"),
         "createdAt": d["created_at"],
         "updatedAt": d["updated_at"],
         "createdById": d.get("created_by_id"),
@@ -110,11 +123,11 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
                 row = cur.fetchone()
                 if not row:
-                    return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Not found"})}
-                return {"statusCode": 200, "headers": CORS, "body": json.dumps(fmt(row))}
-            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees ORDER BY number ASC")
+                    return {"statusCode": 404, "headers": CORS, "body": _dumps({"error": "Not found"})}
+                return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
+            cur.execute(f"SELECT {SELECT_COLS_LIST} FROM {SCHEMA}.trees ORDER BY number ASC")
             rows = cur.fetchall()
-            return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in rows])}
+            return {"statusCode": 200, "headers": CORS, "body": _dumps([fmt(r) for r in rows])}
 
         if method == "POST":
             raw = json.loads(event.get("body") or "{}")
@@ -124,7 +137,7 @@ def handler(event: dict, context) -> dict:
             # Bulk-вставка: если тело — массив объектов
             if isinstance(raw, list):
                 if not raw:
-                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "empty array"})}
+                    return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "empty array"})}
                 cur.execute(f"SELECT COALESCE(MAX(number), 0) AS max_num FROM {SCHEMA}.trees")
                 start_num = cur.fetchone()["max_num"]
                 new_ids = []
@@ -152,7 +165,7 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 placeholders = ",".join(["%s"] * len(new_ids))
                 cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id IN ({placeholders}) ORDER BY number ASC", new_ids)
-                return {"statusCode": 201, "headers": CORS, "body": json.dumps([fmt(r) for r in cur.fetchall()])}
+                return {"statusCode": 201, "headers": CORS, "body": _dumps([fmt(r) for r in cur.fetchall()])}
 
             # Одиночная вставка
             body = raw
@@ -179,14 +192,14 @@ def handler(event: dict, context) -> dict:
             )
             conn.commit()
             cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (new_id,))
-            return {"statusCode": 201, "headers": CORS, "body": json.dumps(fmt(cur.fetchone()))}
+            return {"statusCode": 201, "headers": CORS, "body": _dumps(fmt(cur.fetchone()))}
 
         if method == "PATCH":
             body = json.loads(event.get("body") or "{}")
             ids = body.get("ids", [])
             updates = body.get("updates", {})
             if not ids or not updates:
-                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "ids and updates required"})}
+                return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "ids and updates required"})}
             today = date.today().isoformat()
             allowed = {"name", "species", "diameter", "height", "count", "age", "status", "condition", "lifeStatus", "address", "description"}
             col_map = {"lifeStatus": "life_status"}
@@ -199,7 +212,7 @@ def handler(event: dict, context) -> dict:
                 set_parts.append(f"{col} = %s")
                 values.append(val)
             if not set_parts:
-                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "no valid fields"})}
+                return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "no valid fields"})}
             set_parts.append("updated_at = %s")
             values.append(today)
             placeholders = ",".join(["%s"] * len(ids))
@@ -210,11 +223,11 @@ def handler(event: dict, context) -> dict:
             )
             conn.commit()
             cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id IN ({placeholders}) ORDER BY number ASC", ids)
-            return {"statusCode": 200, "headers": CORS, "body": json.dumps([fmt(r) for r in cur.fetchall()])}
+            return {"statusCode": 200, "headers": CORS, "body": _dumps([fmt(r) for r in cur.fetchall()])}
 
         if method == "PUT":
             if not tree_id:
-                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}
+                return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "id required"})}
             body = json.loads(event.get("body") or "{}")
             today = date.today().isoformat()
             cur.execute(
@@ -237,12 +250,12 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
             row = cur.fetchone()
             if not row:
-                return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Not found"})}
-            return {"statusCode": 200, "headers": CORS, "body": json.dumps(fmt(row))}
+                return {"statusCode": 404, "headers": CORS, "body": _dumps({"error": "Not found"})}
+            return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
 
         if method == "DELETE":
             if not tree_id:
-                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}
+                return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "id required"})}
             cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
             cur.execute(f"""
                 WITH ranked AS (
@@ -253,9 +266,9 @@ def handler(event: dict, context) -> dict:
                 FROM ranked r WHERE t.id = r.id
             """)
             conn.commit()
-            return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+            return {"statusCode": 200, "headers": CORS, "body": _dumps({"ok": True})}
 
-        return {"statusCode": 405, "headers": CORS, "body": json.dumps({"error": "Method not allowed"})}
+        return {"statusCode": 405, "headers": CORS, "body": _dumps({"error": "Method not allowed"})}
 
     finally:
         cur.close()
