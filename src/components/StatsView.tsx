@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TreeMarker, HedgeRow, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
+import { TreeMarker, HedgeRow, STATUS_LABELS, STATUS_COLORS } from '@/types';
 import Icon from '@/components/ui/icon';
 
 interface Props {

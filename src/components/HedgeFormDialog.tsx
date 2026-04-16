@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { HedgeRow, HEDGE_SPECIES_LIST, STATUS_LABELS, CONDITION_LABELS, TreeStatus, TreeCondition } from '@/types/tree';
+import { HedgeRow, HEDGE_SPECIES_LIST, STATUS_LABELS, CONDITION_LABELS, TreeStatus, TreeCondition } from '@/types';
 
 interface Props {
   open: boolean;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { HedgeRow } from '@/types/tree';
+import { HedgeRow } from '@/types';
 import { readCache, writeCache } from '@/hooks/useSessionCache';
 import { API, STORAGE_KEYS } from '@/config/api';
 

@@ -48,3 +48,11 @@ export function haversineDistanceCoords(
 ): number {
   return haversineDistance(L.latLng(lat1, lng1), L.latLng(lat2, lng2));
 }
+
+export function calcPolylineLength(pts: [number, number][]): number {
+  let dist = 0;
+  for (let i = 1; i < pts.length; i++) {
+    dist += haversineDistanceCoords(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+  }
+  return dist;
+}

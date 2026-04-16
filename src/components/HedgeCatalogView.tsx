@@ -3,7 +3,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
-import { HedgeRow, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types/tree';
+import { HedgeRow, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 
 interface Props {

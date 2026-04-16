@@ -13,7 +13,7 @@ import PolygonResultPanel from '@/components/PolygonResultPanel';
 import Icon from '@/components/ui/icon';
 import { useTreeStore } from '@/store/useTreeStore';
 import { useHedgeStore } from '@/store/useHedgeStore';
-import { TreeMarker, HedgeRow } from '@/types/tree';
+import { TreeMarker, HedgeRow } from '@/types';
 import { User } from '@/hooks/useAuth';
 
 type Tab = 'map' | 'catalog' | 'hedges' | 'stats' | 'import' | 'help' | 'admin';

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
-import { TreeMarker, TreeStatus, TreeCondition, TreeLifeStatus, STATUS_LABELS, CONDITION_LABELS, LIFE_STATUS_LABELS, SPECIES_GROUPS } from '@/types/tree';
+import { TreeMarker, TreeStatus, TreeCondition, TreeLifeStatus, STATUS_LABELS, CONDITION_LABELS, LIFE_STATUS_LABELS, SPECIES_GROUPS } from '@/types';
 
 type BulkUpdates = {
   name?: string;

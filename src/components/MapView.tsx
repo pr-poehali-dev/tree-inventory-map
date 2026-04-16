@@ -5,13 +5,14 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { createRoot } from 'react-dom/client';
-import { TreeMarker, STATUS_COLORS, HedgeRow, HEDGE_COLOR, STATUS_LABELS, CONDITION_LABELS } from '@/types/tree';
+import { TreeMarker, STATUS_COLORS, HedgeRow, STATUS_LABELS, CONDITION_LABELS } from '@/types';
 import TreePopup from './TreePopup';
 import MeasureTool from './MeasureTool';
+import MapLegend from './map/MapLegend';
+import MapLayerSwitcher from './map/MapLayerSwitcher';
 import { getTreeEmoji, createTreeIcon, pointInPolygon } from '@/utils/mapUtils';
-
-
-type MapLayer = 'scheme' | 'satellite' | 'hybrid';
+import { MapLayer, getTileLayer, getLabelsLayer } from '@/utils/mapLayers';
+import { calcPolylineLength } from '@/utils/geodesy';
 
 interface Props {
   trees: TreeMarker[];
@@ -28,39 +29,6 @@ interface Props {
   selectedHedgeId?: string | null;
   onHedgePointsEdit?: (id: string, points: [number, number][]) => void;
   onPolygonSelect?: (trees: TreeMarker[]) => void;
-}
-
-const LAYERS: Record<MapLayer, { label: string; icon: string }> = {
-  scheme:    { label: 'Схема',    icon: '🗺' },
-  satellite: { label: 'Спутник', icon: '🛰' },
-  hybrid:    { label: 'Гибрид',  icon: '🌍' },
-};
-
-function getTileLayer(type: MapLayer): L.TileLayer {
-  switch (type) {
-    case 'satellite':
-      return L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri © USGS', maxZoom: 19 }
-      );
-    case 'hybrid':
-      return L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri © USGS', maxZoom: 19 }
-      );
-    default:
-      return L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        { attribution: '© OpenStreetMap © CARTO', maxZoom: 20 }
-      );
-  }
-}
-
-function getLabelsLayer(): L.TileLayer {
-  return L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-    { attribution: '', maxZoom: 20, pane: 'shadowPane' }
-  );
 }
 
 
@@ -277,26 +245,14 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
 
 
 
-  const calcLength = (pts: [number, number][]) => {
-    let dist = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const R = 6371000;
-      const lat1 = pts[i-1][0] * Math.PI / 180;
-      const lat2 = pts[i][0] * Math.PI / 180;
-      const dlat = (pts[i][0] - pts[i-1][0]) * Math.PI / 180;
-      const dlng = (pts[i][1] - pts[i-1][1]) * Math.PI / 180;
-      const a = Math.sin(dlat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlng/2)**2;
-      dist += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-    return dist;
-  };
+
 
   const finishHedgeDraw = () => {
     const map = mapRef.current;
     if (!map) return;
     const pts = hedgeDrawPointsRef.current;
     if (pts.length >= 2 && onHedgeDrawn) {
-      onHedgeDrawn(pts, calcLength(pts));
+      onHedgeDrawn(pts, calcPolylineLength(pts));
     }
     hedgeDrawPointsRef.current = [];
     if (hedgeDrawLineRef.current) { hedgeDrawLineRef.current.remove(); hedgeDrawLineRef.current = null; }
@@ -773,35 +729,12 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         )}
       </div>
 
-      {/* Layer switcher */}
-      <div className="absolute top-16 right-4 z-[1000] flex flex-col items-end gap-1">
-        <button
-          onClick={() => setLayerOpen(v => !v)}
-          title="Слои карты"
-          className={`w-11 h-11 flex items-center justify-center rounded-xl shadow-lg text-lg transition-all active:scale-95
-            ${layerOpen ? 'bg-[var(--forest-mid)] text-white' : 'bg-white/95 text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'}`}
-        >
-          🗂
-        </button>
-        {layerOpen && (
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden flex flex-col">
-            {(Object.entries(LAYERS) as [MapLayer, { label: string; icon: string }][]).map(([key, val]) => (
-              <button
-                key={key}
-                onClick={() => { setActiveLayer(key); setLayerOpen(false); }}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all
-                  ${activeLayer === key
-                    ? 'bg-[var(--forest-mid)] text-white'
-                    : 'text-[var(--forest-dark)] hover:bg-[var(--forest-pale)]'
-                  }`}
-              >
-                <span>{val.icon}</span>
-                <span>{val.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <MapLayerSwitcher
+        activeLayer={activeLayer}
+        open={layerOpen}
+        onToggle={() => setLayerOpen(v => !v)}
+        onSelect={(layer) => { setActiveLayer(layer); setLayerOpen(false); }}
+      />
 
       {/* Zoom controls */}
       <div className="absolute right-4 z-[1000] flex flex-col gap-1 shadow-lg rounded-xl overflow-hidden"
@@ -845,49 +778,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         />
       )}
 
-      {/* Legend */}
-      <div className="absolute bottom-8 left-4 z-[1000] flex flex-col items-start gap-1">
-        <button
-          onClick={() => setLegendOpen(o => !o)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg bg-white/95 backdrop-blur-sm text-[var(--forest-dark)] hover:bg-[var(--forest-pale)] transition-all"
-        >
-          <span>🗺</span> Условные знаки {legendOpen ? '▲' : '▼'}
-        </button>
-        {legendOpen && (
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg text-xs">
-            <div className="font-semibold text-[var(--forest-dark)] mb-2 font-heading">Состояние</div>
-            {[
-              { color: '#2d6a4f', label: 'Хорошее' },
-              { color: '#52b788', label: 'Удовлетворительное' },
-              { color: '#d4a017', label: 'Неудовл.' },
-              { color: '#8b5e3c', label: 'Сухостой' },
-              { color: '#c0392b', label: 'Аварийное' },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-2 py-0.5">
-                <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-                <span className="text-gray-600">{label}</span>
-              </div>
-            ))}
-            <div className="font-semibold text-[var(--forest-dark)] mt-2 mb-1 font-heading">Тип</div>
-            {[
-              { emoji: '🌳', label: 'Лиственные' },
-              { emoji: '🌲', label: 'Хвойные' },
-              { emoji: '🌿', label: 'Кустарники' },
-              { emoji: '🔴', label: 'Спиленное' },
-            ].map(({ emoji, label }) => (
-              <div key={label} className="flex items-center gap-2 py-0.5">
-                <span className="text-sm">{emoji}</span>
-                <span className="text-gray-600">{label}</span>
-              </div>
-            ))}
-            <div className="font-semibold text-[var(--forest-dark)] mt-2 mb-1 font-heading">Линейные объекты</div>
-            <div className="flex items-center gap-2 py-0.5">
-              <div className="w-8 h-1.5 rounded-full shrink-0" style={{ background: HEDGE_COLOR }} />
-              <span className="text-gray-600">Живая изгородь</span>
-            </div>
-          </div>
-        )}
-      </div>
+      <MapLegend open={legendOpen} onToggle={() => setLegendOpen(o => !o)} />
     </div>
   );
 }

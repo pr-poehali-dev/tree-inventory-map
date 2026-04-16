@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { TreeMarker, STATUS_COLORS } from '@/types/tree';
+import { TreeMarker, STATUS_COLORS } from '@/types';
 
 export function getTreeEmoji(species: string, lifeStatus?: string): string {
   if (lifeStatus === 'cut') return '🪵';

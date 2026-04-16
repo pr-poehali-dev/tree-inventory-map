@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TreeMarker, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types/tree';
+import { TreeMarker, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types';
 
 interface Props {
   tree: TreeMarker;

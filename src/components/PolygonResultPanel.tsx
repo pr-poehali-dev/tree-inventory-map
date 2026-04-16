@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TreeMarker, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
+import { TreeMarker, STATUS_LABELS, STATUS_COLORS } from '@/types';
 import BulkEditDialog from '@/components/BulkEditDialog';
 import { plural } from '@/utils/plural';
 
@@ -123,4 +123,3 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree, onBul
     </>
   );
 }
-

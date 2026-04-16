@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { TreeMarker, TreeStatus } from '@/types/tree';
+import { TreeMarker, TreeStatus } from '@/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { readCache, writeCache } from '@/hooks/useSessionCache';
 import { API, STORAGE_KEYS } from '@/config/api';

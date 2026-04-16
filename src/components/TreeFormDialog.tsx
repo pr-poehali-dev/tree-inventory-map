@@ -16,7 +16,7 @@ import {
   STATUS_LABELS,
   CONDITION_LABELS,
   LIFE_STATUS_LABELS,
-} from '@/types/tree';
+} from '@/types';
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 
 interface Props {

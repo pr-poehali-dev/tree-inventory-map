@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import proj4 from 'proj4';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { TreeMarker, STATUS_LABELS, CONDITION_LABELS, LIFE_STATUS_LABELS } from '@/types/tree';
+import { TreeMarker, STATUS_LABELS, CONDITION_LABELS, LIFE_STATUS_LABELS } from '@/types';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // МСК-167 → WGS84   (точное преобразование через proj4)
