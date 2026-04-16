@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { HedgeRow } from '@/types/tree';
 import { readCache, writeCache } from '@/hooks/useSessionCache';
+import { API, STORAGE_KEYS } from '@/config/api';
 
-const HEDGES_URL = 'https://functions.poehali.dev/fbccade8-1a6c-460a-bbe4-c25ceb03129c';
-const CACHE_KEY = 'hedges_cache';
+const HEDGES_URL = API.HEDGES;
+const CACHE_KEY = STORAGE_KEYS.HEDGES_CACHE;
 
 export function useHedgeStore() {
   const [hedges, setHedges] = useState<HedgeRow[]>(() => readCache<HedgeRow[]>(CACHE_KEY) ?? []);

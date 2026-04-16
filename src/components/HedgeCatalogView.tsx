@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Icon from '@/components/ui/icon';
 import { HedgeRow, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types/tree';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 
 interface Props {
   hedges: HedgeRow[];
@@ -158,28 +158,13 @@ export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, i
         ))}
       </div>
 
-      <Dialog open={!!confirmDeleteId} onOpenChange={v => !v && setConfirmDeleteId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Удалить изгородь?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-[var(--stone)]">Это действие нельзя отменить.</p>
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => { if (confirmDeleteId) { onDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
-              className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors"
-            >
-              Удалить
-            </button>
-            <button
-              onClick={() => setConfirmDeleteId(null)}
-              className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--stone)] hover:bg-gray-50 text-sm transition-colors"
-            >
-              Отмена
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!confirmDeleteId}
+        title="Удалить изгородь?"
+        message="Это действие нельзя отменить."
+        onConfirm={() => { if (confirmDeleteId) { onDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

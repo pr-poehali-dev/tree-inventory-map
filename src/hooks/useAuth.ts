@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { API, STORAGE_KEYS } from '@/config/api';
 
-const AUTH_URL = 'https://functions.poehali.dev/4f508270-f2b5-4829-a964-26aad4952e13';
-const TOKEN_KEY = 'tree_auth_token';
+const AUTH_URL = API.AUTH;
+const TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
 
 export interface User {
   id: number;

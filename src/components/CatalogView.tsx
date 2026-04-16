@@ -7,6 +7,7 @@ import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_GROUPS, TreeStatus } 
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BulkEditDialog from '@/components/BulkEditDialog';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 
 interface Props {
   trees: TreeMarker[];
@@ -366,33 +367,13 @@ export default function CatalogView({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-[var(--forest-dark)] flex items-center gap-2">
-              <Icon name="Trash2" size={18} className="text-red-500" />
-              Удалить дерево?
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-[var(--stone)] pb-2">
-            Это действие необратимо. Дерево будет удалено из базы данных.
-          </p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setConfirmDeleteId(null)}
-              className="px-4 py-2 rounded-lg text-sm text-[var(--forest-dark)] bg-[var(--forest-pale)] hover:bg-[var(--forest-light)]/30 transition-colors font-medium"
-            >
-              Отмена
-            </button>
-            <button
-              onClick={() => { if (confirmDeleteId) { onDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
-              className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors font-medium"
-            >
-              Удалить
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!confirmDeleteId}
+        title="Удалить дерево?"
+        message="Это действие необратимо. Дерево будет удалено из базы данных."
+        onConfirm={() => { if (confirmDeleteId) { onDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
 
       {onBulkEdit && (
         <BulkEditDialog

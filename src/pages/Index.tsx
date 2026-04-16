@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { haversineDistanceCoords } from '@/utils/geodesy';
 import MapView from '@/components/MapView';
 import CatalogView from '@/components/CatalogView';
 import HedgeCatalogView from '@/components/HedgeCatalogView';
@@ -107,12 +108,7 @@ export default function Index({ user, onLogout }: IndexProps) {
     const lengthM = points.reduce((dist, pt, i) => {
       if (i === 0) return 0;
       const prev = points[i - 1];
-      const R = 6371000;
-      const lat1 = prev[0] * Math.PI / 180, lat2 = pt[0] * Math.PI / 180;
-      const dlat = (pt[0] - prev[0]) * Math.PI / 180;
-      const dlng = (pt[1] - prev[1]) * Math.PI / 180;
-      const a = Math.sin(dlat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlng/2)**2;
-      return dist + R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return dist + haversineDistanceCoords(prev[0], prev[1], pt[0], pt[1]);
     }, 0);
     hedgeStore.updateHedge(id, { points, lengthM });
   }, [hedgeStore]);

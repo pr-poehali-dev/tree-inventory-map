@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TreeMarker, STATUS_LABELS, STATUS_COLORS } from '@/types/tree';
 import BulkEditDialog from '@/components/BulkEditDialog';
+import { plural } from '@/utils/plural';
 
 interface Props {
   trees: TreeMarker[];
@@ -123,10 +124,3 @@ export default function PolygonResultPanel({ trees, onClose, onSelectTree, onBul
   );
 }
 
-function plural(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-}

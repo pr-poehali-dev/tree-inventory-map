@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import Icon from '@/components/ui/icon';
 import { User } from '@/hooks/useAuth';
+import { API, STORAGE_KEYS } from '@/config/api';
 
-const AUTH_URL = 'https://functions.poehali.dev/4f508270-f2b5-4829-a964-26aad4952e13';
-const TOKEN_KEY = 'tree_auth_token';
+const AUTH_URL = API.AUTH;
+const TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
 
 const ROLES: { value: string; label: string; color: string }[] = [
   { value: 'user', label: 'Только просмотр', color: 'bg-gray-100 text-gray-600' },

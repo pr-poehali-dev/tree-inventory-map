@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { TreeMarker, TreeStatus } from '@/types/tree';
 import { useDebounce } from '@/hooks/useDebounce';
-import { readCache, writeCache, clearCache } from '@/hooks/useSessionCache';
+import { readCache, writeCache } from '@/hooks/useSessionCache';
+import { API, STORAGE_KEYS } from '@/config/api';
 
-const TREES_URL = 'https://functions.poehali.dev/1b6d0efc-fd2f-47f8-bbb8-13e7b83d6536';
-const CACHE_KEY = 'trees_cache';
+const TREES_URL = API.TREES;
+const CACHE_KEY = STORAGE_KEYS.TREES_CACHE;
 
 export function useTreeStore() {
   const [trees, setTrees] = useState<TreeMarker[]>(() => readCache<TreeMarker[]>(CACHE_KEY) ?? []);

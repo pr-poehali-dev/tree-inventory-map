@@ -1,5 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
+import {
+  haversineDistance,
+  calcTotalDistance,
+  calcArea,
+  formatDistance,
+  formatArea,
+} from '@/utils/geodesy';
 
 type MeasureMode = 'distance' | 'area';
 
@@ -7,46 +14,6 @@ interface Props {
   map: L.Map;
   mode: MeasureMode;
   onClose: () => void;
-}
-
-function haversineDistance(a: L.LatLng, b: L.LatLng): number {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const sin2 = Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.asin(Math.sqrt(sin2));
-}
-
-function calcTotalDistance(pts: L.LatLng[]): number {
-  let d = 0;
-  for (let i = 1; i < pts.length; i++) d += haversineDistance(pts[i - 1], pts[i]);
-  return d;
-}
-
-function calcArea(pts: L.LatLng[]): number {
-  if (pts.length < 3) return 0;
-  const R = 6371000;
-  let area = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const j = (i + 1) % pts.length;
-    const lat1 = (pts[i].lat * Math.PI) / 180;
-    const lat2 = (pts[j].lat * Math.PI) / 180;
-    const dLng = ((pts[j].lng - pts[i].lng) * Math.PI) / 180;
-    area += dLng * (2 + Math.sin(lat1) + Math.sin(lat2));
-  }
-  return Math.abs((area * R * R) / 2);
-}
-
-function formatDistance(m: number): string {
-  if (m >= 1000) return `${(m / 1000).toFixed(2)} км`;
-  return `${m.toFixed(1)} м`;
-}
-
-function formatArea(m2: number): string {
-  if (m2 >= 10000) return `${(m2 / 10000).toFixed(2)} га`;
-  return `${m2.toFixed(1)} м²`;
 }
 
 function createDotIcon(color = '#2563eb') {

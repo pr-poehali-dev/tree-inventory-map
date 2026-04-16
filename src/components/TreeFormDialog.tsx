@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { API } from '@/config/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,7 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const UPLOAD_URL = 'https://functions.poehali.dev/1e1ccb94-3105-4500-95aa-0902c3e7a44f';
+  const UPLOAD_URL = API.UPLOAD;
 
   useEffect(() => {
     if (open) {
