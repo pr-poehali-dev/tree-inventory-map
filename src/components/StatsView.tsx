@@ -12,30 +12,38 @@ const COLORS_CHART = ['#2d6a4f', '#52b788', '#95d5b2', '#d4a017', '#8b5e3c', '#c
 
 export default function StatsView({ trees, hedges = [] }: Props) {
   const stats = useMemo(() => {
-    const total = trees.reduce((s, t) => s + t.count, 0);
-    const totalArea = trees.length;
-    const avgDiameter = trees.length ? (trees.reduce((s, t) => s + t.diameter, 0) / trees.length).toFixed(1) : 0;
-    const avgHeight = trees.length ? (trees.reduce((s, t) => s + t.height, 0) / trees.length).toFixed(1) : 0;
+    let total = 0, diameterSum = 0, heightSum = 0;
+    const statusMap: Record<string, number> = {};
+    const speciesMap: Record<string, number> = {};
 
-    const byStatus = Object.entries(STATUS_LABELS).map(([key, label]) => ({
-      name: label,
-      value: trees.filter(t => t.status === key).reduce((s, t) => s + t.count, 0),
-      color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
-    })).filter(d => d.value > 0);
+    for (const t of trees) {
+      total += t.count;
+      diameterSum += t.diameter;
+      heightSum += t.height;
+      statusMap[t.status] = (statusMap[t.status] ?? 0) + t.count;
+      speciesMap[t.species] = (speciesMap[t.species] ?? 0) + t.count;
+    }
 
-    const bySpecies = Object.entries(
-      trees.reduce((acc, t) => {
-        acc[t.species] = (acc[t.species] ?? 0) + t.count;
-        return acc;
-      }, {} as Record<string, number>)
-    )
+    const n = trees.length;
+    const avgDiameter = n ? (diameterSum / n).toFixed(1) : 0;
+    const avgHeight = n ? (heightSum / n).toFixed(1) : 0;
+
+    const byStatus = Object.entries(STATUS_LABELS)
+      .map(([key, label]) => ({
+        name: label,
+        value: statusMap[key] ?? 0,
+        color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
+      }))
+      .filter(d => d.value > 0);
+
+    const bySpecies = Object.entries(speciesMap)
       .map(([name, count], i) => ({ name: name.split(' ')[0], count, fill: COLORS_CHART[i % COLORS_CHART.length] }))
       .sort((a, b) => b.count - a.count);
 
-    const emergency = trees.filter(t => t.status === 'emergency').reduce((s, t) => s + t.count, 0);
-    const bad = trees.filter(t => t.status === 'bad').reduce((s, t) => s + t.count, 0);
+    const emergency = statusMap['emergency'] ?? 0;
+    const bad = statusMap['bad'] ?? 0;
 
-    return { total, totalArea, avgDiameter, avgHeight, byStatus, bySpecies, emergency, bad };
+    return { total, totalArea: n, avgDiameter, avgHeight, byStatus, bySpecies, emergency, bad };
   }, [trees]);
 
   const hedgeStats = useMemo(() => {

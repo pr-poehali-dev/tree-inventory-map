@@ -19,6 +19,13 @@
       "path": "/",
       "body": {"ids": [], "updates": {"status": "good"}},
       "expectedStatus": 400
+    },
+    {
+      "name": "DELETE batch with empty ids returns 400",
+      "method": "DELETE",
+      "path": "/",
+      "body": {"ids": []},
+      "expectedStatus": 400
     }
   ]
 }

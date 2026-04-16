@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { TreeMarker, TreeStatus } from '@/types/tree';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const TREES_URL = 'https://functions.poehali.dev/1b6d0efc-fd2f-47f8-bbb8-13e7b83d6536';
 
@@ -13,6 +14,7 @@ export function useTreeStore() {
   const [filterDiameterMin, setFilterDiameterMin] = useState<number>(0);
   const [filterDiameterMax, setFilterDiameterMax] = useState<number>(200);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     fetch(TREES_URL)
@@ -50,10 +52,8 @@ export function useTreeStore() {
 
   const deleteTree = useCallback(async (id: string) => {
     setSelectedTreeId(prev => (prev === id ? null : prev));
+    setTrees(prev => prev.filter(t => t.id !== id));
     await fetch(`${TREES_URL}?id=${id}`, { method: 'DELETE' });
-    const res = await fetch(TREES_URL);
-    const data = await res.json();
-    if (Array.isArray(data)) setTrees(data);
   }, []);
 
   const deleteTreesBefore = useCallback(async (fromDate: string, toDate: string) => {
@@ -62,13 +62,15 @@ export function useTreeStore() {
       if (toDate && t.createdAt > toDate) return false;
       return true;
     });
-    for (const tree of toDelete) {
-      setSelectedTreeId(prev => (prev === tree.id ? null : prev));
-      await fetch(`${TREES_URL}?id=${tree.id}`, { method: 'DELETE' });
-    }
-    const res = await fetch(TREES_URL);
-    const data = await res.json();
-    if (Array.isArray(data)) setTrees(data);
+    if (toDelete.length === 0) return;
+    const ids = toDelete.map(t => t.id);
+    setSelectedTreeId(prev => (ids.includes(prev ?? '') ? null : prev));
+    setTrees(prev => prev.filter(t => !ids.includes(t.id)));
+    await fetch(TREES_URL, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
   }, [trees]);
 
   const updateManyTrees = useCallback(async (ids: string[], updates: Partial<TreeMarker>) => {
@@ -100,17 +102,16 @@ export function useTreeStore() {
     setTimeout(() => setImportProgress(null), 800);
   }, []);
 
-  const filteredTrees = trees.filter(tree => {
-    if (filterSpecies && tree.species !== filterSpecies) return false;
-    if (filterStatus && tree.status !== filterStatus) return false;
-    if (tree.diameter < filterDiameterMin || tree.diameter > filterDiameterMax) return false;
-    if (
-      searchQuery &&
-      !tree.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !tree.species.toLowerCase().includes(searchQuery.toLowerCase())
-    ) return false;
-    return true;
-  });
+  const filteredTrees = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
+    return trees.filter(tree => {
+      if (filterSpecies && tree.species !== filterSpecies) return false;
+      if (filterStatus && tree.status !== filterStatus) return false;
+      if (tree.diameter < filterDiameterMin || tree.diameter > filterDiameterMax) return false;
+      if (q && !tree.name.toLowerCase().includes(q) && !tree.species.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [trees, filterSpecies, filterStatus, filterDiameterMin, filterDiameterMax, debouncedSearch]);
 
   const selectedTree = trees.find(t => t.id === selectedTreeId) ?? null;
 

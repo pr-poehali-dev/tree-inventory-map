@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,6 +17,7 @@ interface Props {
 export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, isGuest = false }: Props) {
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const debouncedSearch = useDebounce(search, 300);
 
   const exportCSV = () => {
     const headers = ['№', 'Название', 'Вид кустарника', 'Длина (м)', 'Состояние', 'Жизнеспособность', 'Описание', 'Дата добавления'];
@@ -39,13 +41,15 @@ export default function HedgeCatalogView({ hedges, onSelect, onEdit, onDelete, i
     URL.revokeObjectURL(url);
   };
 
-  const filtered = hedges.filter(h =>
-    !search ||
-    h.name.toLowerCase().includes(search.toLowerCase()) ||
-    h.species.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const sorted = [...filtered].sort((a, b) => a.number - b.number);
+  const sorted = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
+    const filtered = hedges.filter(h =>
+      !q ||
+      h.name.toLowerCase().includes(q) ||
+      h.species.toLowerCase().includes(q)
+    );
+    return [...filtered].sort((a, b) => a.number - b.number);
+  }, [hedges, debouncedSearch]);
 
   return (
     <div className="flex flex-col h-full">

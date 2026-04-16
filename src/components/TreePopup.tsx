@@ -34,6 +34,9 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
         <img
           src={tree.photoUrl}
           alt={tree.name}
+          width={320}
+          height={96}
+          loading="lazy"
           className="w-full h-24 object-cover rounded-lg mb-2"
         />
       )}

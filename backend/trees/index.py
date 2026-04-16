@@ -254,6 +254,25 @@ def handler(event: dict, context) -> dict:
             return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
 
         if method == "DELETE":
+            body_raw = event.get("body") or ""
+            if body_raw:
+                body = json.loads(body_raw)
+                ids = body.get("ids", [])
+                if not ids:
+                    return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "ids required"})}
+                if ids:
+                    placeholders = ",".join(["%s"] * len(ids))
+                    cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id IN ({placeholders})", ids)
+                    cur.execute(f"""
+                        WITH ranked AS (
+                            SELECT id, ROW_NUMBER() OVER (ORDER BY number ASC) AS new_num
+                            FROM {SCHEMA}.trees
+                        )
+                        UPDATE {SCHEMA}.trees t SET number = r.new_num
+                        FROM ranked r WHERE t.id = r.id
+                    """)
+                    conn.commit()
+                    return {"statusCode": 200, "headers": CORS, "body": _dumps({"ok": True, "deleted": len(ids)})}
             if not tree_id:
                 return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "id required"})}
             cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
