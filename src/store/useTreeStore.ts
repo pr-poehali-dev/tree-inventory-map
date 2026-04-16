@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { TreeMarker, TreeStatus } from '@/types/tree';
 import { useDebounce } from '@/hooks/useDebounce';
+import { readCache, writeCache, clearCache } from '@/hooks/useSessionCache';
 
 const TREES_URL = 'https://functions.poehali.dev/1b6d0efc-fd2f-47f8-bbb8-13e7b83d6536';
+const CACHE_KEY = 'trees_cache';
 
 export function useTreeStore() {
-  const [trees, setTrees] = useState<TreeMarker[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [trees, setTrees] = useState<TreeMarker[]>(() => readCache<TreeMarker[]>(CACHE_KEY) ?? []);
+  const [loading, setLoading] = useState(() => !readCache<TreeMarker[]>(CACHE_KEY));
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [filterSpecies, setFilterSpecies] = useState<string>('');
@@ -20,7 +22,10 @@ export function useTreeStore() {
     fetch(TREES_URL)
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setTrees(data);
+        if (Array.isArray(data)) {
+          setTrees(data);
+          writeCache(CACHE_KEY, data);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -33,7 +38,11 @@ export function useTreeStore() {
       body: JSON.stringify(tree),
     });
     const newTree: TreeMarker = await res.json();
-    setTrees(prev => [...prev, newTree]);
+    setTrees(prev => {
+      const next = [...prev, newTree];
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
     return newTree;
   }, []);
 
@@ -47,12 +56,20 @@ export function useTreeStore() {
       body: JSON.stringify(merged),
     });
     const updated: TreeMarker = await res.json();
-    setTrees(prev => prev.map(t => t.id === id ? updated : t));
+    setTrees(prev => {
+      const next = prev.map(t => t.id === id ? updated : t);
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
   }, [trees]);
 
   const deleteTree = useCallback(async (id: string) => {
     setSelectedTreeId(prev => (prev === id ? null : prev));
-    setTrees(prev => prev.filter(t => t.id !== id));
+    setTrees(prev => {
+      const next = prev.filter(t => t.id !== id);
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
     await fetch(`${TREES_URL}?id=${id}`, { method: 'DELETE' });
   }, []);
 
@@ -65,7 +82,11 @@ export function useTreeStore() {
     if (toDelete.length === 0) return;
     const ids = toDelete.map(t => t.id);
     setSelectedTreeId(prev => (ids.includes(prev ?? '') ? null : prev));
-    setTrees(prev => prev.filter(t => !ids.includes(t.id)));
+    setTrees(prev => {
+      const next = prev.filter(t => !ids.includes(t.id));
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
     await fetch(TREES_URL, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -81,10 +102,14 @@ export function useTreeStore() {
     });
     const updated: TreeMarker[] = await res.json();
     if (Array.isArray(updated)) {
-      setTrees(prev => prev.map(t => {
-        const u = updated.find(u => u.id === t.id);
-        return u ? u : t;
-      }));
+      setTrees(prev => {
+        const next = prev.map(t => {
+          const u = updated.find(u => u.id === t.id);
+          return u ? u : t;
+        });
+        writeCache(CACHE_KEY, next);
+        return next;
+      });
     }
   }, []);
 
@@ -98,7 +123,11 @@ export function useTreeStore() {
     });
     const added: TreeMarker[] = await res.json();
     setImportProgress({ current: newTrees.length, total: newTrees.length });
-    setTrees(prev => [...(Array.isArray(added) ? added : []), ...prev]);
+    setTrees(prev => {
+      const next = [...(Array.isArray(added) ? added : []), ...prev];
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
     setTimeout(() => setImportProgress(null), 800);
   }, []);
 
